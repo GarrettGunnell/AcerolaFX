@@ -7,6 +7,13 @@ uniform float3 _FogColor <
     ui_tooltip = "Set fog color";
 > = float3(1.0f, 1.0f, 1.0f);
 
+uniform int _FogMode <
+    ui_type = "combo";
+    ui_label = "Fog factor mode";
+    ui_items = "Exp\0"
+                "Exp2\0";
+> = 1;
+
 uniform float _Density <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Fog Density";
@@ -35,8 +42,15 @@ float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
     float depth = ReShade::GetLinearizedDepth(uv);
     float viewDistance = depth * _ZProjection;
 
-    float fogFactor = (_Density / sqrt(log(2))) * max(0.0f, viewDistance - _Offset);
-    fogFactor = exp2(-fogFactor * fogFactor);
+    float fogFactor = 0.0f;
+    
+    if (_FogMode == 0) {
+        fogFactor = (_Density / log(2)) * max(0.0f, viewDistance - _Offset);
+        fogFactor = exp2(-fogFactor);
+    } else {
+        fogFactor = (_Density / sqrt(log(2))) * max(0.0f, viewDistance - _Offset);
+        fogFactor = exp2(-fogFactor * fogFactor);
+    }
 
     float3 fogOutput = lerp(_FogColor, col.rgb, saturate(fogFactor));
 

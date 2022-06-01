@@ -102,7 +102,7 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     float4 col = tex2D(ReShade::BackBuffer, uv).rgba;
     float UIMask = 1.0f - col.a;
 
-    float3 output = col.rgb;
+    float3 output = pow(abs(col.rgb), 1.0f / 2.2f);
 
     output *= _Exposure;
 
@@ -115,6 +115,8 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     output *= (_ColorFilter * _FilterIntensity);
 
     output = lerp(luminance(output), output, _Saturation);
+
+    output = pow(abs(output.rgb), 2.2f);
 
     return float4(lerp(col.rgb, output, UIMask), col.a);
 }

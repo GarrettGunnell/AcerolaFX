@@ -12,7 +12,7 @@ float4 PS_Gamma(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float4 col = tex2D(ReShade::BackBuffer, uv).rgba;
     float UIMask = 1.0f - col.a;
 
-    float3 output = pow(abs(col.rgb), _Gamma);
+    float3 output = pow(saturate(abs(col.rgb)), _Gamma);
 
     return float4(lerp(col.rgb, output, UIMask), col.a);
 }

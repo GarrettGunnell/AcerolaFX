@@ -116,8 +116,6 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
     output = lerp(luminance(output), output, _Saturation);
 
-    output = pow(abs(saturate(output.rgb)), 2.2f);
-
     return float4(lerp(col.rgb, output, UIMask), col.a);
 }
 

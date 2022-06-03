@@ -1,4 +1,5 @@
 #include "ReShade.fxh"
+#include "Downscales.fxh"
 
 uniform float _Threshold <
     ui_min = 0.0f; ui_max = 10.0f;
@@ -58,17 +59,6 @@ float3 Prefilter(float3 col) {
     return col * contribution;
 }
 
-texture2D downOne {
-    Width = BUFFER_WIDTH / 2;
-    Height = BUFFER_HEIGHT / 2;
-
-    Format = RGBA16F;
-};
-
-sampler2D downOneSampler {
-    Texture = downOne;
-};
-
 float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float UIMask = (tex2D(ReShade::BackBuffer, uv).a > 0.0f) ? 0.0f : 1.0f;
@@ -81,7 +71,7 @@ float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 
 technique Bloom {
     pass Prefilter {
-        RenderTarget = downOne;
+        RenderTarget = DownScale::HalfTex;
         
         VertexShader = PostProcessVS;
         PixelShader = PS_Prefilter;

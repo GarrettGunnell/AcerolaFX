@@ -22,6 +22,11 @@ uniform float _Intensity <
     ui_tooltip = "Adjust bloom intensity";
 > = 1.0f;
 
+uniform bool _SampleSky <
+    ui_label = "Sky Mask";
+    ui_tooltip = "Toggle whether or not the sky is included in bloom (looks nice on stars)";
+> = false;
+
 // Advanced
 
 uniform float _DownSampleDelta <
@@ -143,6 +148,10 @@ float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float UIMask = (tex2D(ReShade::BackBuffer, uv).a > 0.0f) ? 0.0f : 1.0f;
     float SkyMask = (ReShade::GetLinearizedDepth(uv) == 1.0f) ? 0.0f : 1.0f;
+
+    if (_SampleSky) {
+        SkyMask = 1.0f;
+    }
 
     float4 output = float4(Prefilter(pow(abs(SampleBox(ReShade::BackBuffer, uv, texelSize, 1.0f)), 2.2f).rgb) * UIMask * SkyMask, 1.0f);
     

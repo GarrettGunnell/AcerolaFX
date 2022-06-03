@@ -22,6 +22,8 @@ uniform float _Intensity <
     ui_tooltip = "Adjust bloom intensity";
 > = 1.0f;
 
+// Advanced
+
 uniform float _DownSampleDelta <
     ui_category = "Advanced settings";
     ui_min = 0.01f; ui_max = 2.0f;
@@ -36,7 +38,19 @@ uniform float _UpSampleDelta <
     ui_tooltip = "Adjust sampling offset when upsampling the downscaled back buffer";
 > = 0.5f;
 
-// Advanced
+uniform int _BlendMode <
+    ui_category = "Advanced settings";
+    ui_type = "combo";
+    ui_label = "Bloom blend mode";
+    ui_tooltip = "Adjust how bloom texture blends into image.";
+    ui_items = "Add\0"
+               "Multiply\0"
+               "Color Burn\0"
+               "Screen\0"
+               "Color Dodge\0"
+               "Soft Light\0"
+               "Hard Light\0";
+> = 0;
 
 uniform float _ExposureCorrect <
     ui_category = "Advanced settings";
@@ -209,7 +223,38 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float UIMask = 1.0f - col.a;
 
     float2 texelSize = float2(1.0f / (BUFFER_WIDTH / 2), 1.0f / (BUFFER_HEIGHT / 2));
-    float3 output = col.rgb + _Intensity * pow(abs(ColorCorrect(SampleBox(DownScale::Half, uv, texelSize, _UpSampleDelta))), 1.0f / 2.2f);
+    float3 bloom = _Intensity * pow(abs(ColorCorrect(SampleBox(DownScale::Half, uv, texelSize, _UpSampleDelta))), 1.0f / 2.2f);
+    
+    float3 output = col.rgb;
+    
+    // Add (Default)
+    if (_BlendMode == 0) { 
+        output += bloom;
+    }
+    // Multiply
+    else if (_BlendMode == 1) {
+        output *= (1.0f + bloom);
+    }
+    // Color Burn
+    else if (_BlendMode == 2) {
+        output = 1.0f - (1.0f - output) / (1.0f + bloom);
+    }
+    // Screen
+    else if (_BlendMode == 3) {
+        output = 1.0f - (1.0f - output) * (1.0f - bloom);
+    }
+    // Color Dodge
+    else if (_BlendMode == 4) {
+        output = output / (1.0f - bloom);
+    }
+    // Soft Light
+    else if (_BlendMode == 5) {
+        output = (bloom > 0.5f) * (1.0f - (1.0f - output) * (1.0f - (bloom - 0.5f))) + (bloom <= 0.5f) * (output * (bloom + 0.5f));
+    }
+    // Hard Light
+    else if (_BlendMode == 6) {
+        output = (bloom > 0.5f) * (1.0f - (1.0f - output) * (1.0f - 2.0f * (bloom - 0.5f))) + (bloom <= 0.5f) * (output * (2.0f * bloom));
+    }
 
     return float4(lerp(col.rgb, output, UIMask), col.a);
 }

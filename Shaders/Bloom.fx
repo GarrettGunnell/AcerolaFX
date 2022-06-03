@@ -69,11 +69,112 @@ float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     return output;
 }
 
+float4 Scale(float4 pos : SV_POSITION, float2 uv : TEXCOORD, sampler2D buffer, int sizeFactor, float sampleDelta) {
+    float2 texelSize = float2(1.0f / (BUFFER_WIDTH / sizeFactor), 1.0f / (BUFFER_HEIGHT / sizeFactor));
+
+    return float4(SampleBox(buffer, uv, texelSize, sampleDelta), 1.0f);
+}
+
+float4 PS_Down1(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Half, 2, _DownSampleDelta); }
+float4 PS_Down2(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Quarter, 4, _DownSampleDelta); }
+float4 PS_Down3(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Eighth, 8, _DownSampleDelta); }
+float4 PS_Down4(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Sixteenth, 16, _DownSampleDelta); }
+float4 PS_Down5(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::ThirtySecondth, 32, _DownSampleDelta); }
+float4 PS_Up1(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::SixtyFourth, 64, _UpSampleDelta); }
+float4 PS_Up2(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::ThirtySecondth, 32, _UpSampleDelta); }
+float4 PS_Up3(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Sixteenth, 16, _UpSampleDelta); }
+float4 PS_Up4(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Eighth, 8, _UpSampleDelta); }
+float4 PS_Up5(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Quarter, 4, _UpSampleDelta); }
+
+float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float4 col = tex2D(ReShade::BackBuffer, uv);
+    float UIMask = 1.0f - col.a;
+
+    float2 texelSize = float2(1.0f / (BUFFER_WIDTH / 2), 1.0f / (BUFFER_HEIGHT / 2));
+    float3 output = col.rgb + _Intensity * pow(abs(SampleBox(DownScale::Half, uv, texelSize, _UpSampleDelta)), 1.0f / 2.2f);
+
+    return float4(lerp(col.rgb, output, UIMask), col.a);
+}
+
 technique Bloom {
     pass Prefilter {
         RenderTarget = DownScale::HalfTex;
-        
         VertexShader = PostProcessVS;
         PixelShader = PS_Prefilter;
+    }
+
+    pass Down1 {
+        RenderTarget = DownScale::QuarterTex;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Down1;
+    }
+
+    pass Down2 {
+        RenderTarget = DownScale::EighthTex;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Down2;
+    }
+
+    pass Down3 {
+        RenderTarget = DownScale::SixteenthTex;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Down3;
+    }
+
+    pass Down4 {
+        RenderTarget = DownScale::ThirtySecondthTex;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Down4;
+    }
+
+    pass Down5 {
+        RenderTarget = DownScale::SixtyFourthTex;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Down5;
+    }
+    
+    pass Up1 {
+        RenderTarget = DownScale::ThirtySecondthTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up1;
+    }
+
+    pass Up2 {
+        RenderTarget = DownScale::SixteenthTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up2;
+    }
+
+    pass Up3 {
+        RenderTarget = DownScale::EighthTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up3;
+    }
+
+    pass Up4 {
+        RenderTarget = DownScale::QuarterTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up4;
+    }
+
+    pass Up5 {
+        RenderTarget = DownScale::HalfTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up5;
+    }
+
+    pass Blend {
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Blend;
     }
 }

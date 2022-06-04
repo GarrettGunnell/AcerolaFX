@@ -82,7 +82,7 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     return float4(lerp(col.rgb, output, UIMask), col.a);
 }
 
-technique ColorCorrection {
+technique ColorCorrection  <ui_tooltip = "(HDR) A suite of color correction effects."; >  {
     pass ColorCorrect {
         RenderTarget = ColorCorrectionTex;
 

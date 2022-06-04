@@ -21,7 +21,7 @@ float4 PS_Gamma(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     return float4(lerp(col.rgb, output, UIMask), col.a);
 }
 
-technique Gamma {
+technique Gamma < ui_tooltip = "(LDR/HDR) Adjusts the gamma correction of the screen."; > {
     pass {
         RenderTarget = GammaTex;
 

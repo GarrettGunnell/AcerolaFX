@@ -231,7 +231,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     return float4(lerp(col.rgb, output, UIMask), col.a);
 }
 
-technique Bloom {
+technique Bloom  <ui_tooltip = "(HDR) Blend the brighter areas of the screen into itself to exaggerate highlights."; >  {
     pass Prefilter {
         RenderTarget = DownScale::HalfTex;
         VertexShader = PostProcessVS;

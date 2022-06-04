@@ -14,7 +14,6 @@ float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 float4 PS_Sharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float UIMask = 1.0f - col.a;
 
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float neighbor = _Sharpness * -1;
@@ -27,12 +26,12 @@ float4 PS_Sharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 
     float4 output = n * neighbor + e * neighbor + col * center + s * neighbor + w * neighbor;
 
-    UIMask = max(0.0f, 1.0f - col.a - output.a);
+    float UIMask = max(0.0f, 1.0f - col.a - output.a);
 
     return float4(lerp(col.rgb, output.rgb, UIMask), col.a);
 }
 
-technique Sharpness {
+technique Sharpness <ui_tooltip = "(LDR) Increases the contrast between edges to create the illusion of high detail."; > {
     pass {
         RenderTarget = SharpnessTex;
 

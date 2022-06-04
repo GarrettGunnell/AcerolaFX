@@ -57,8 +57,12 @@ uniform float _Saturation <
     ui_tooltip = "Adjust saturation";
 > = 1.0f;
 
+texture2D ColorCorrectionTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D ColorCorrection { Texture = ColorCorrectionTex; };
+float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ColorCorrection, uv).rgba; }
+
 float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = tex2D(ReShade::BackBuffer, uv).rgba;
+    float4 col = tex2D(Common::AcerolaBuffer, uv).rgba;
     float UIMask = 1.0f - col.a;
 
     float3 output = col.rgb;
@@ -79,8 +83,17 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 }
 
 technique ColorCorrection {
-    pass {
+    pass ColorCorrect {
+        RenderTarget = ColorCorrectionTex;
+
         VertexShader = PostProcessVS;
         PixelShader = PS_ColorCorrect;
+    }
+
+    pass EndPass {
+        RenderTarget = Common::AcerolaBufferTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_EndPass;
     }
 }

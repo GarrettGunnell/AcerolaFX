@@ -31,17 +31,15 @@ uniform float _Offset <
 
 uniform float _ZProjection <
     ui_category = "Advanced settings";
-    ui_min = 0.0f;
+    ui_min = 0.0f; ui_max = 4096.0f;
     ui_label = "Camera Z Projection";
+    ui_type = "slider";
     ui_tooltip = "Adjust Camera Z Projection (depth of the camera frustum)";
 > = 1000.0f;
 
-texture2D FogTex {
-    Width = BUFFER_WIDTH;
-    Height = BUFFER_HEIGHT;
-
-    Format = RGBA16F;
-}; sampler2D Fog { Texture = FogTex; };
+texture2D FogTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D Fog { Texture = FogTex; };
+float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Fog, uv).rgba; }
 
 float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv).rgba;
@@ -62,10 +60,8 @@ float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
 
     float3 fogOutput = lerp(_FogColor, col.rgb, saturate(fogFactor));
 
-    return float4(lerp(col.rgb, fogOutput, UIMask), 1.0f);
+    return float4(lerp(col.rgb, fogOutput, UIMask), col.a);
 }
-
-float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Fog, uv).rgba; }
 
 technique Fog {
     pass {

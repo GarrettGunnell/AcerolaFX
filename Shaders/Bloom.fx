@@ -141,9 +141,13 @@ float3 Prefilter(float3 col) {
     return col * contribution;
 }
 
+texture2D BloomTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D Bloom { Texture = BloomTex; };
+float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Bloom, uv).rgba; }
+
 float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    float UIMask = (tex2D(ReShade::BackBuffer, uv).a > 0.0f) ? 0.0f : 1.0f;
+    float UIMask = (tex2D(Common::AcerolaBuffer, uv).a > 0.0f) ? 0.0f : 1.0f;
     float SkyMask = (ReShade::GetLinearizedDepth(uv) == 1.0f) ? 0.0f : 1.0f;
 
     if (_SampleSky) {
@@ -187,7 +191,7 @@ float3 ColorCorrect(float3 col) : SV_TARGET {
 }
 
 float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = tex2D(ReShade::BackBuffer, uv);
+    float4 col = tex2D(Common::AcerolaBuffer, uv);
     float UIMask = 1.0f - col.a;
 
     float2 texelSize = float2(1.0f / (BUFFER_WIDTH / 2), 1.0f / (BUFFER_HEIGHT / 2));
@@ -305,7 +309,16 @@ technique Bloom {
     }
 
     pass Blend {
+        RenderTarget = BloomTex;
+
         VertexShader = PostProcessVS;
         PixelShader = PS_Blend;
+    }
+
+    pass End {
+        RenderTarget = Common::AcerolaBufferTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_EndPass;
     }
 }

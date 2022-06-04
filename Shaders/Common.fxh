@@ -5,7 +5,7 @@ namespace Common {
         Width = BUFFER_WIDTH;
         Height = BUFFER_HEIGHT;
 
-        Format = RGBA16F;
+        Format = RGBA8;
     }; sampler2D AcerolaBuffer { Texture = AcerolaBufferTex; };
 
     float Luminance(float3 color) {

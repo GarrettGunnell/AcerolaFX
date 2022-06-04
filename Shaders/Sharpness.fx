@@ -13,14 +13,14 @@ uniform float _SharpnessFalloff <
     ui_label = "Fog Density";
     ui_type = "slider";
     ui_tooltip = "Adjust sharpness fall off. (0 is no falloff)";
-> = 0.0f;
+> = 0.009f;
 
 uniform float _Offset <
     ui_min = 0.0f; ui_max = 1000.0f;
     ui_label = "Fog Offset";
     ui_type = "slider";
     ui_tooltip = "Offset distance at which sharpness falloff occurs";
-> = 0.0f;
+> = 200.0f;
 
 texture2D SharpnessTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Sharpness { Texture = SharpnessTex; };

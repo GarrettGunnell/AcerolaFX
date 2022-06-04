@@ -22,6 +22,20 @@ uniform int _LineSize <
     ui_tooltip = "Adjust width of CRT lines by 2 ^ x";
 > = 0;
 
+uniform float _LineStrength <
+    ui_min = 1.0f; ui_max = 5.0f;
+    ui_label = "Line Strength";
+    ui_type = "drag";
+    ui_tooltip = "Modify strength of the CRT lines.";
+> = 1.0f;
+
+uniform float _BrightnessAdjust <
+    ui_min = -1.0f; ui_max = 1.0f;
+    ui_label = "Brightness Adjust";
+    ui_type = "drag";
+    ui_tooltip = "Adjust brightness of the crt lines.";
+> = 0.0f;
+
 uniform bool _MaskUI <
     ui_label = "Mask UI";
     ui_tooltip = "Mask UI from dithering";
@@ -49,8 +63,8 @@ float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     vignette = smoothstep(0.0f, vignette, 1.0f - abs(crtUV));
     vignette = saturate(vignette);
 
-    output.g *= (sin(uv.y * (BUFFER_HEIGHT / exp2(_LineSize)) * 2.0f) + 1.0f) * 0.15f + 1.0f;
-    output.rb *= (cos(uv.y * (BUFFER_HEIGHT / exp2(_LineSize)) * 2.0f) + 1.0f) * 0.135f + 1.0f; 
+    output.g *= (sin(uv.y * (BUFFER_HEIGHT / exp2(_LineSize)) * 2.0f) + 1.0f) * 0.15f * _LineStrength + 1.0f + _BrightnessAdjust;
+    output.rb *= (cos(uv.y * (BUFFER_HEIGHT / exp2(_LineSize)) * 2.0f) + 1.0f) * 0.135f * _LineStrength + 1.0f + _BrightnessAdjust; 
 
     output = saturate(output) * vignette.x * vignette.y;
 

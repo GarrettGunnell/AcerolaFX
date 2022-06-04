@@ -40,6 +40,11 @@ uniform int _BayerLevel <
     ui_tooltip = "Choose which bayer level to dither with.";
 > = 1;
 
+uniform bool _MaskUI <
+    ui_label = "Mask UI";
+    ui_tooltip = "Mask UI from dithering";
+> = true;
+
 static const int bayer2[2 * 2] = {
     0, 2,
     3, 1
@@ -85,7 +90,7 @@ float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 
 float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Dither, uv);
-    float UIMask = 1.0f - col.a;
+    float4 UI = tex2D(ReShade::BackBuffer, uv);
 
     int x = uv.x * WIDTH;
     int y = uv.y * HEIGHT;
@@ -101,7 +106,7 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
     output.g = floor((_GreenColorCount - 1.0f) * output.g + 0.5) / (_GreenColorCount - 1.0f);
     output.b = floor((_BlueColorCount - 1.0f) * output.b + 0.5) / (_BlueColorCount - 1.0f);
 
-   return float4(lerp(col.rgb, output.rgb, UIMask), col.a);
+   return float4(lerp(output.rgb, UI.rgb, UI.a * _MaskUI), UI.a);
 }
 
 technique Dither  <ui_tooltip = "(LDR) Reduces the color palette of the image with ordered dithering."; >  {

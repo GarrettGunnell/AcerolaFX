@@ -1,4 +1,9 @@
 #include "ReShade.fxh"
+#include "Common.fxh"
+uniform bool _DebugHDR <
+    ui_label = "Debug HDR";
+    ui_tooltip = "Check to see which colors are in high dynamic range (aka rgb clamped)";
+> = false;
 
 uniform int _Tonemapper <
     ui_type = "combo";
@@ -35,11 +40,23 @@ float3 NarkowiczACES(float3 col) {
     return (col * (2.51f * col + 0.03f)) / (col * (2.43f * col + 0.59f) + 0.14f);
 }
 
+texture2D ToneMapTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D ToneMap { Texture = ToneMapTex; };
+float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ToneMap, uv).rgba; }
+
 float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = tex2D(ReShade::BackBuffer, uv).rgba;
+    float4 col = tex2D(Common::AcerolaBuffer, uv).rgba;
     float UIMask = 1.0f - col.a;
 
     float3 output = col.rgb;
+
+    if (_DebugHDR) {
+        if (output.r > 1.0f || output.g > 1.0f || output.b > 1.0f) {
+            return float4(output, 1.0f);
+        }
+
+        return 0.0f;
+    }
 
     if (_Tonemapper == 0)
         output = HillACES(output);
@@ -51,7 +68,16 @@ float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 technique Tonemapping {
     pass {
+        RenderTarget = ToneMapTex;
+
         VertexShader = PostProcessVS;
         PixelShader = PS_Tonemap;
+    }
+
+    pass EndPass {
+        RenderTarget = Common::AcerolaBufferTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_EndPass;
     }
 }

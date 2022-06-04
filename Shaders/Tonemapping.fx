@@ -2,10 +2,16 @@
 
 uniform int _Tonemapper <
     ui_type = "combo";
-    ui_label = "Tonemapper";
+    ui_label = "Tone Mapper";
+    ui_tooltip = "A tone mapper converts high dynamic range colors into a visible color space for your screen.";
     ui_items = "Hill ACES\0"
                "Narkowicz ACES\0";
 > = 0;
+
+uniform bool _DebugHDR <
+    ui_label = "Debug HDR";
+    ui_tooltip = "Check to see which colors are in high dynamic range (aka rgb clamped)";
+> = false;
 
 static const float3x3 ACESInputMat = float3x3(
     float3(0.59719, 0.35458, 0.04823),
@@ -40,6 +46,14 @@ float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
     float UIMask = 1.0f - col.a;
 
     float3 output = col.rgb;
+
+    if (_DebugHDR) {
+        if (output.r > 1.0f || output.g > 1.0f || output.b > 1.0f) {
+            return float4(output, 1.0f);
+        }
+
+        return 0.0f;
+    }
 
     if (_Tonemapper == 0)
         output = HillACES(output);

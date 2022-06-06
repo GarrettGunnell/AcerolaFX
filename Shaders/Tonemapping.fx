@@ -165,6 +165,8 @@ float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
     else if (_Tonemapper == 4)
         output = Hable(output);
 
+    output = saturate(output);
+
     return float4(lerp(col.rgb, output, UIMask), col.a);
 }
 

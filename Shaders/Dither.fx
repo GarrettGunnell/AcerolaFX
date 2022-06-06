@@ -100,7 +100,7 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
     bayerValues[1] = GetBayer4(x, y);
     bayerValues[2] = GetBayer8(x, y);
 
-    float4 output = col + _Spread * bayerValues[_BayerLevel];
+    float4 output = saturate(col) + _Spread * bayerValues[_BayerLevel];
 
     output.r = floor((_RedColorCount - 1.0f) * output.r + 0.5) / (_RedColorCount - 1.0f);
     output.g = floor((_GreenColorCount - 1.0f) * output.g + 0.5) / (_GreenColorCount - 1.0f);

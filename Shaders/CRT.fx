@@ -53,7 +53,7 @@ float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
 
     float4 col = tex2D(Common::AcerolaBuffer, crtUV);
 
-    float3 output = col.rgb;
+    float3 output = saturate(col.rgb);
 
     if (crtUV.x <= 0.0f || 1.0f <= crtUV.x || crtUV.y <= 0.0f || 1.0f <= crtUV.y)
         output = 0;

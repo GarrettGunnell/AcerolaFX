@@ -44,8 +44,14 @@ uniform float _UpSampleDelta <
     ui_tooltip = "Adjust sampling offset when upsampling the downscaled back buffer";
 > = 0.5f;
 
-uniform int _BlendMode <
+uniform bool _DebugBloom <
     ui_category = "Advanced settings";
+    ui_label = "Debug Bloom";
+    ui_tooltip = "Render bloom texture to screen for debug purposes"; 
+> = false;
+
+uniform int _BlendMode <
+    ui_category = "Color Correction";
     ui_type = "combo";
     ui_label = "Bloom blend mode";
     ui_tooltip = "Adjust how bloom texture blends into image.";
@@ -59,7 +65,7 @@ uniform int _BlendMode <
 > = 0;
 
 uniform float _ExposureCorrect <
-    ui_category = "Advanced settings";
+    ui_category = "Color Correction";
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Exposure";
     ui_type = "drag";
@@ -67,7 +73,7 @@ uniform float _ExposureCorrect <
 > = 1.0f;
 
 uniform float _Temperature <
-    ui_category = "Advanced settings";
+    ui_category = "Color Correction";
     ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Temperature";
     ui_type = "drag";
@@ -75,7 +81,7 @@ uniform float _Temperature <
 > = 0.0f;
 
 uniform float _Tint <
-    ui_category = "Advanced settings";
+    ui_category = "Color Correction";
     ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Tint";
     ui_type = "drag";
@@ -83,7 +89,7 @@ uniform float _Tint <
 > = 0.0f;
 
 uniform float _Contrast <
-    ui_category = "Advanced settings";
+    ui_category = "Color Correction";
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Contrast";
     ui_type = "drag";
@@ -91,7 +97,7 @@ uniform float _Contrast <
 > = 1.0f;
 
 uniform float3 _Brightness <
-    ui_category = "Advanced settings";
+    ui_category = "Color Correction";
     ui_min = -5.0f; ui_max = 5.0f;
     ui_label = "Brightness";
     ui_type = "drag";
@@ -99,7 +105,7 @@ uniform float3 _Brightness <
 > = float3(0.0, 0.0, 0.0);
 
 uniform float3 _ColorFilter <
-    ui_category = "Advanced settings";
+    ui_category = "Color Correction";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Color Filter";
     ui_type = "drag";
@@ -107,7 +113,7 @@ uniform float3 _ColorFilter <
 > = float3(1.0, 1.0, 1.0);
 
 uniform float _FilterIntensity <
-    ui_category = "Advanced settings";
+    ui_category = "Color Correction";
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Color Filter Intensity (HDR)";
     ui_type = "drag";
@@ -115,7 +121,7 @@ uniform float _FilterIntensity <
 > = 1.0f;
 
 uniform float _Saturation <
-    ui_category = "Advanced settings";
+    ui_category = "Color Correction";
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Saturation";
     ui_type = "drag";
@@ -195,7 +201,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float UIMask = 1.0f - col.a;
 
     float2 texelSize = float2(1.0f / (BUFFER_WIDTH / 2), 1.0f / (BUFFER_HEIGHT / 2));
-    float3 bloom = _Intensity * pow(abs(ColorCorrect(SampleBox(DownScale::Half, uv, texelSize, _UpSampleDelta))), 1.0f / 2.2f);
+    float3 bloom = _Intensity * pow(abs(ColorCorrect(SampleBox(DownScale::Half, uv, texelSize, _UpSampleDelta))), 1.0f / 2.2f) * UIMask;
     
     float3 output = col.rgb;
     
@@ -228,7 +234,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
         output = (bloom > 0.5f) * (1.0f - (1.0f - output) * (1.0f - 2.0f * (bloom - 0.5f))) + (bloom <= 0.5f) * (output * (2.0f * bloom));
     }
 
-    return float4(lerp(col.rgb, output, UIMask), col.a);
+    return _DebugBloom ? float4(bloom, col.a) : float4(lerp(col.rgb, output, UIMask), col.a);
 }
 
 technique Bloom  <ui_tooltip = "(HDR) Blend the brighter areas of the screen into itself to exaggerate highlights."; >  {

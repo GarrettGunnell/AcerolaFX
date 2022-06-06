@@ -12,11 +12,11 @@ float3 Sample(float2 uv, float deltaX, float deltaY) {
     return saturate(tex2D(Common::AcerolaBuffer, uv + float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * float2(deltaX, deltaY)).rgb);
 }
 
-float GetMin(float x, float y, float z) {
+float3 GetMin(float3 x, float3 y, float3 z) {
     return min(x, min(y, z));
 }
 
-float GetMax(float x, float y, float z) {
+float3 GetMax(float3 x, float3 y, float3 z) {
     return max(x, max(y, z));
 }
 
@@ -41,31 +41,18 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
     float3 h = Sample(uv,  0,  1);
     float3 i = Sample(uv,  1,  1);
 
-    float minR = GetMin(GetMin(d.r, e.r, f.r), b.r, h.r);
-    float minG = GetMin(GetMin(d.g, e.g, f.g), b.g, h.g);
-    float minB = GetMin(GetMin(d.b, e.b, f.b), b.b, h.b);
-    float3 minRGB = float3(minR, minG, minB);
-
-    float minR2 = GetMin(GetMin(minR, a.r, c.r), g.r, i.r);
-    float minG2 = GetMin(GetMin(minG, a.g, c.g), g.g, i.g);
-    float minB2 = GetMin(GetMin(minB, a.b, c.b), g.b, i.b);
-    float3 minRGB2 = float3(minR2, minG2, minB2);
+    float3 minRGB = GetMin(GetMin(d, e, f), b, h);
+    float3 minRGB2 = GetMin(GetMin(minRGB, a, c), g, i);
 
     minRGB += minRGB2;
 
-    float maxR = GetMax(GetMax(d.r, e.r, f.r), b.r, h.r);
-    float maxG = GetMax(GetMax(d.g, e.g, f.g), b.g, h.g);
-    float maxB = GetMax(GetMax(d.b, e.b, f.b), b.b, h.b);
-    float3 maxRGB = float3(maxR, maxG, maxB);
-    float maxR2 = GetMax(GetMax(maxR, a.r, c.r), g.r, i.r);
-    float maxG2 = GetMax(GetMax(maxG, a.g, c.g), g.g, i.g);
-    float maxB2 = GetMax(GetMax(maxB, a.b, c.b), g.b, i.b);
-    float3 maxRGB2 = float3(maxR2, maxG2, maxB2);
+    float3 maxRGB = GetMax(GetMax(d, e, f), b, h);
+    float3 maxRGB2 = GetMax(GetMax(maxRGB, a, c), g, i);
 
     maxRGB += maxRGB2;
 
     float3 rcpM = 1.0f / maxRGB;
-    float3 amp = saturate(min(minRGB, float3(2.0f, 2.0f, 2.0f) - maxRGB) * rcpM);
+    float3 amp = saturate(min(minRGB, 2.0f - maxRGB) * rcpM);
     amp = sqrt(amp);
 
     float3 w = amp * sharpness;

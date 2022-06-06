@@ -59,9 +59,7 @@ uniform int _BlendMode <
                "Multiply\0"
                "Color Burn\0"
                "Screen\0"
-               "Color Dodge\0"
-               "Soft Light\0"
-               "Hard Light\0";
+               "Color Dodge\0";
 > = 0;
 
 uniform float _ExposureCorrect <
@@ -224,14 +222,6 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     // Color Dodge
     else if (_BlendMode == 4) {
         output = output / (1.0f - bloom);
-    }
-    // Soft Light
-    else if (_BlendMode == 5) {
-        output = (bloom > 0.5f) * (1.0f - (1.0f - output) * (1.0f - (bloom - 0.5f))) + (bloom <= 0.5f) * (output * (bloom + 0.5f));
-    }
-    // Hard Light
-    else if (_BlendMode == 6) {
-        output = (bloom > 0.5f) * (1.0f - (1.0f - output) * (1.0f - 2.0f * (bloom - 0.5f))) + (bloom <= 0.5f) * (output * (2.0f * bloom));
     }
 
     return _DebugBloom ? float4(bloom, col.a) : float4(lerp(col.rgb, output, UIMask), col.a);

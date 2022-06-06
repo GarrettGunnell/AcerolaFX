@@ -19,7 +19,7 @@ uniform int _BlendMode <
 uniform float3 _BlendColor <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Bled Color";
-    ui_type = "drag";
+    ui_type = "color";
     ui_tooltip = "Color to blend with screen (if enabled).";
 > = 1.0f;
 

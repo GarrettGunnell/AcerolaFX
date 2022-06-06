@@ -39,7 +39,7 @@ uniform float3 _Brightness <
 uniform float3 _ColorFilter <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Color Filter";
-    ui_type = "drag";
+    ui_type = "color";
     ui_tooltip = "Set color filter (white for no change)";
 > = float3(1.0, 1.0, 1.0);
 

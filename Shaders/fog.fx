@@ -4,7 +4,7 @@
 uniform float3 _FogColor <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Fog Color";
-    ui_type = "drag";
+    ui_type = "color";
     ui_tooltip = "Set fog color";
 > = float3(1.0f, 1.0f, 1.0f);
 

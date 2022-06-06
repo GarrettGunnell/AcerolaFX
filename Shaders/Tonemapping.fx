@@ -12,6 +12,7 @@ uniform int _Tonemapper <
 > = 0;
 
 uniform float _Cwhite <
+    ui_category_closed = true;
     ui_category = "Reinhard Extended";
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "White Point";
@@ -20,6 +21,7 @@ uniform float _Cwhite <
 > = 1.0f;
 
 uniform float _A <
+    ui_category_closed = true;
     ui_category = "Hable";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Shoulder Strength";
@@ -28,6 +30,7 @@ uniform float _A <
 > = 0.15f;
 
 uniform float _B <
+    ui_category_closed = true;
     ui_category = "Hable";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Linear Strength";
@@ -36,6 +39,7 @@ uniform float _B <
 > = 0.5f;
 
 uniform float _C <
+    ui_category_closed = true;
     ui_category = "Hable";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Linear Angle";
@@ -44,6 +48,7 @@ uniform float _C <
 > = 0.1f;
 
 uniform float _D <
+    ui_category_closed = true;
     ui_category = "Hable";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Toe Strength";
@@ -52,6 +57,7 @@ uniform float _D <
 > = 0.2f;
 
 uniform float _E <
+    ui_category_closed = true;
     ui_category = "Hable";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Toe Numerator";
@@ -60,6 +66,7 @@ uniform float _E <
 > = 0.02f;
 
 uniform float _F <
+    ui_category_closed = true;
     ui_category = "Hable";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Toe Denominator";
@@ -68,6 +75,7 @@ uniform float _F <
 > = 0.3f;
 
 uniform float _W <
+    ui_category_closed = true;
     ui_category = "Hable";
     ui_min = 0.0f; ui_max = 60.0f;
     ui_label = "Linear White Point";
@@ -76,6 +84,7 @@ uniform float _W <
 > = 11.2f;
 
 uniform bool _DebugHDR <
+    ui_category_closed = true;
     ui_category = "Advanced settings";
     ui_label = "Debug HDR";
     ui_tooltip = "Check to see which colors are in high dynamic range (aka rgb clamped)";

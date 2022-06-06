@@ -8,8 +8,8 @@ uniform float _Sharpness <
     ui_tooltip = "Adjust sharpening";
 > = 1.0f;
 
-float4 Sample(float2 uv, float deltaX, float deltaY) {
-    return saturate(tex2D(Common::AcerolaBuffer, uv + float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * float2(deltaX, deltaY)));
+float3 Sample(float2 uv, float deltaX, float deltaY) {
+    return saturate(tex2D(Common::AcerolaBuffer, uv + float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * float2(deltaX, deltaY)).rgb);
 }
 
 float GetMin(float x, float y, float z) {
@@ -31,62 +31,47 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
 
     float sharpness = -(1.0f / lerp(8.0f, 5.0f, saturate(_Sharpness)));
 
-    float4 a = Sample(uv, -1, -1);
-    float4 b = Sample(uv,  0, -1);
-    float4 c = Sample(uv,  1, -1);
-    float4 d = Sample(uv, -1,  0);
-    float4 e = Sample(uv,  0,  0);
-    float4 f = Sample(uv,  1,  0);
-    float4 g = Sample(uv, -1,  1);
-    float4 h = Sample(uv,  0,  1);
-    float4 i = Sample(uv,  1,  1);
+    float3 a = Sample(uv, -1, -1);
+    float3 b = Sample(uv,  0, -1);
+    float3 c = Sample(uv,  1, -1);
+    float3 d = Sample(uv, -1,  0);
+    float3 e = Sample(uv,  0,  0);
+    float3 f = Sample(uv,  1,  0);
+    float3 g = Sample(uv, -1,  1);
+    float3 h = Sample(uv,  0,  1);
+    float3 i = Sample(uv,  1,  1);
 
     float minR = GetMin(GetMin(d.r, e.r, f.r), b.r, h.r);
     float minG = GetMin(GetMin(d.g, e.g, f.g), b.g, h.g);
     float minB = GetMin(GetMin(d.b, e.b, f.b), b.b, h.b);
+    float3 minRGB = float3(minR, minG, minB);
+
     float minR2 = GetMin(GetMin(minR, a.r, c.r), g.r, i.r);
     float minG2 = GetMin(GetMin(minG, a.g, c.g), g.g, i.g);
     float minB2 = GetMin(GetMin(minB, a.b, c.b), g.b, i.b);
+    float3 minRGB2 = float3(minR2, minG2, minB2);
 
-    minR = minR + minR2;
-    minG = minG + minG2;
-    minB = minB + minB2;
+    minRGB += minRGB2;
 
     float maxR = GetMax(GetMax(d.r, e.r, f.r), b.r, h.r);
     float maxG = GetMax(GetMax(d.g, e.g, f.g), b.g, h.g);
     float maxB = GetMax(GetMax(d.b, e.b, f.b), b.b, h.b);
+    float3 maxRGB = float3(maxR, maxG, maxB);
     float maxR2 = GetMax(GetMax(maxR, a.r, c.r), g.r, i.r);
     float maxG2 = GetMax(GetMax(maxG, a.g, c.g), g.g, i.g);
     float maxB2 = GetMax(GetMax(maxB, a.b, c.b), g.b, i.b);
+    float3 maxRGB2 = float3(maxR2, maxG2, maxB2);
 
-    maxR = maxR + maxR2;
-    maxG = maxG + maxG2;
-    maxB = maxB + maxB2;
+    maxRGB += maxRGB2;
 
-    float rcpMR = 1.0f / maxR;
-    float rcpMG = 1.0f / maxG;
-    float rcpMB = 1.0f / maxB;
+    float3 rcpM = 1.0f / maxRGB;
+    float3 amp = saturate(min(minRGB, float3(2.0f, 2.0f, 2.0f) - maxRGB) * rcpM);
+    amp = sqrt(amp);
 
-    float ampR = saturate(min(minR, 2.0f - maxR) * rcpMR);
-    float ampG = saturate(min(minG, 2.0f - maxG) * rcpMG);
-    float ampB = saturate(min(minB, 2.0f - maxB) * rcpMB);
+    float3 w = amp * sharpness;
+    float3 rcpW = 1.0f / (1.0f + 4.0f * w);
 
-    ampR = sqrt(ampR);
-    ampG = sqrt(ampG);
-    ampB = sqrt(ampB);
-
-    float wR = ampR * sharpness;
-    float wG = ampG * sharpness;
-    float wB = ampB * sharpness;
-
-    float rcpWeightR = 1.0f / (1.0f + 4.0f * wR);
-    float rcpWeightG = 1.0f / (1.0f + 4.0f * wG);
-    float rcpWeightB = 1.0f / (1.0f + 4.0f * wB);
-
-    float3 output = 1.0f;
-    output.r = saturate((b.r * wR + d.r * wR + f.r * wR + h.r * wR + e.r) * rcpWeightR);
-    output.g = saturate((b.g * wG + d.g * wG + f.g * wG + h.g * wG + e.g) * rcpWeightG);
-    output.b = saturate((b.b * wB + d.b * wB + f.b * wB + h.b * wB + e.b) * rcpWeightB);
+    float3 output = saturate((b * w + d * w + f * w + h * w + e) * rcpW);
 
     return float4(lerp(col.rgb, output.rgb, 1.0f - col.a), col.a);
 }

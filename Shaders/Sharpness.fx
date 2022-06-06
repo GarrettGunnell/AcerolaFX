@@ -5,7 +5,7 @@ uniform float _Sharpness <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Sharpness";
     ui_type = "drag";
-    ui_tooltip = "Adjust sharpnening";
+    ui_tooltip = "Adjust sharpening";
 > = 3.0f;
 
 uniform float _SharpnessFalloff <

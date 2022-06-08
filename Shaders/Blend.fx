@@ -13,12 +13,13 @@ uniform int _BlendMode <
                "Soft Light\0"
                "Color Dodge\0"
                "Color Burn\0"
-               "Vivid Light\0";
+               "Vivid Light\0"
+               "Acerola Secret Sauce\0";
 > = 0;
 
 uniform float3 _BlendColor <
     ui_min = 0.0f; ui_max = 1.0f;
-    ui_label = "Bled Color";
+    ui_label = "Blend Color";
     ui_type = "color";
     ui_tooltip = "Color to blend with screen (if enabled).";
 > = 1.0f;
@@ -63,6 +64,8 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
         output = 1.0f - ((1.0f - a) / (b + 0.001));
     else if (_BlendMode == 9)
         output = (Common::Luminance(b) < 0.5) ? 1.0f - ((1.0f - a) / (2.0f * (b + 0.001f))) : a / (2.0f * (1.0f - (b - 0.001f)));
+    else if (_BlendMode == 10)
+        output = (Common::Luminance(b) < 0.5) ? 1.0f - ((1.0f - a) / (4.0f * (b + 0.001f))) - 0.25f : a / (4.0f * (1.0f - (b - 0.001f))) + 0.25;
 
     output = lerp(a, saturate(output), _Strength);
 

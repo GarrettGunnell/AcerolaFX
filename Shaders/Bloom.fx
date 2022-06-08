@@ -2,6 +2,10 @@
 #include "Common.fxh"
 #include "Downscales.fxh"
 
+#ifndef NUM_DOWNSCALES
+    #define NUM_DOWNSCALES 1
+#endif
+
 uniform float _Threshold <
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Threshold";
@@ -172,11 +176,15 @@ float4 PS_Down2(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET
 float4 PS_Down3(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Eighth, 8, _DownSampleDelta); }
 float4 PS_Down4(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Sixteenth, 16, _DownSampleDelta); }
 float4 PS_Down5(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::ThirtySecondth, 32, _DownSampleDelta); }
-float4 PS_Up1(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::SixtyFourth, 64, _UpSampleDelta); }
-float4 PS_Up2(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::ThirtySecondth, 32, _UpSampleDelta); }
-float4 PS_Up3(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Sixteenth, 16, _UpSampleDelta); }
-float4 PS_Up4(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Eighth, 8, _UpSampleDelta); }
-float4 PS_Up5(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Quarter, 4, _UpSampleDelta); }
+float4 PS_Down6(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::SixtyFourth, 64, _DownSampleDelta); }
+float4 PS_Down7(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::OneTwentyEighth, 128, _DownSampleDelta); }
+float4 PS_Up1(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::TwoFiftySixth, 256, _UpSampleDelta); }
+float4 PS_Up2(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::OneTwentyEighth, 128, _UpSampleDelta); }
+float4 PS_Up3(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::SixtyFourth, 64, _UpSampleDelta); }
+float4 PS_Up4(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::ThirtySecondth, 32, _UpSampleDelta); }
+float4 PS_Up5(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Sixteenth, 16, _UpSampleDelta); }
+float4 PS_Up6(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Eighth, 8, _UpSampleDelta); }
+float4 PS_Up7(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Quarter, 4, _UpSampleDelta); }
 
 float3 ColorCorrect(float3 col) : SV_TARGET {
     col *= _ExposureCorrect;
@@ -217,82 +225,120 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     return _DebugBloom ? float4(bloom, col.a) : float4(lerp(col.rgb, output, UIMask), col.a);
 }
 
-technique Bloom  <ui_tooltip = "(HDR) Blend the brighter areas of the screen into itself to exaggerate highlights."; >  {
+technique Bloom  <ui_tooltip = "(HDR)(HIGH PERFORMANCE COST) Blend the brighter areas of the screen into itself to exaggerate highlights."; >  {
     pass Prefilter {
         RenderTarget = DownScale::HalfTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Prefilter;
     }
 
+    #if NUM_DOWNSCALES > 1
     pass Down1 {
         RenderTarget = DownScale::QuarterTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down1;
     }
-
+    #if NUM_DOWNSCALES > 2
     pass Down2 {
         RenderTarget = DownScale::EighthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down2;
     }
-
+    #if NUM_DOWNSCALES > 3
     pass Down3 {
         RenderTarget = DownScale::SixteenthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down3;
     }
-
+    #if NUM_DOWNSCALES > 4
     pass Down4 {
         RenderTarget = DownScale::ThirtySecondthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down4;
     }
-
+    #if NUM_DOWNSCALES > 5
     pass Down5 {
         RenderTarget = DownScale::SixtyFourthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down5;
     }
-    
+
+    #if NUM_DOWNSCALES > 6
+    pass Down6 {
+        RenderTarget = DownScale::OneTwentyEighthTex;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Down6;
+    }
+
+    #if NUM_DOWNSCALES > 7
+    pass Down7 {
+        RenderTarget = DownScale::TwoFiftySixthTex;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Down7;
+    }
+
     pass Up1 {
+        RenderTarget = DownScale::OneTwentyEighthTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up1;
+    }
+    #endif
+
+    pass Up2 {
+        RenderTarget = DownScale::SixtyFourthTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up2;
+    }
+    #endif
+    
+    pass Up3 {
         RenderTarget = DownScale::ThirtySecondthTex;
         BlendEnable = true;
         DestBlend = ONE;
         VertexShader = PostProcessVS;
         PixelShader = PS_Up1;
     }
+    #endif
 
-    pass Up2 {
+    pass Up4 {
         RenderTarget = DownScale::SixteenthTex;
         BlendEnable = true;
         DestBlend = ONE;
         VertexShader = PostProcessVS;
         PixelShader = PS_Up2;
     }
+    #endif
 
-    pass Up3 {
+    pass Up5 {
         RenderTarget = DownScale::EighthTex;
         BlendEnable = true;
         DestBlend = ONE;
         VertexShader = PostProcessVS;
         PixelShader = PS_Up3;
     }
+    #endif
 
-    pass Up4 {
+    pass Up6 {
         RenderTarget = DownScale::QuarterTex;
         BlendEnable = true;
         DestBlend = ONE;
         VertexShader = PostProcessVS;
         PixelShader = PS_Up4;
     }
+    #endif
 
-    pass Up5 {
+    pass Up7 {
         RenderTarget = DownScale::HalfTex;
         BlendEnable = true;
         DestBlend = ONE;
         VertexShader = PostProcessVS;
         PixelShader = PS_Up5;
     }
+    #endif
 
     pass Blend {
         RenderTarget = BloomTex;

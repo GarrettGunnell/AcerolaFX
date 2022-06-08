@@ -42,4 +42,18 @@ namespace DownScale {
 
         Format = RGBA16F;
     }; sampler2D SixtyFourth { Texture = SixtyFourthTex; };
+
+    texture2D OneTwentyEighthTex {
+        Width = BUFFER_WIDTH / 128;
+        Height = BUFFER_HEIGHT / 128;
+
+        Format = RGBA16F;
+    }; sampler2D OneTwentyEighth { Texture = OneTwentyEighthTex; };
+
+    texture2D TwoFiftySixthTex {
+        Width = BUFFER_WIDTH / 256;
+        Height = BUFFER_HEIGHT / 256;
+
+        Format = RGBA16F;
+    }; sampler2D TwoFiftySixth { Texture = TwoFiftySixthTex; };
 }

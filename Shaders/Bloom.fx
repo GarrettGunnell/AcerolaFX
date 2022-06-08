@@ -24,8 +24,8 @@ uniform float _Intensity <
 > = 1.0f;
 
 uniform bool _SampleSky <
-    ui_label = "Sky Mask";
-    ui_tooltip = "Toggle whether or not the sky is included in bloom (looks nice on stars)";
+    ui_label = "Include Sky";
+    ui_tooltip = "Toggle whether or not the sky is included in bloom (should probably use for gpose)";
 > = false;
 
 // Advanced
@@ -56,8 +56,6 @@ uniform int _BlendMode <
     ui_label = "Bloom blend mode";
     ui_tooltip = "Adjust how bloom texture blends into image.";
     ui_items = "Add\0"
-               "Multiply\0"
-               "Color Burn\0"
                "Screen\0"
                "Color Dodge\0";
 > = 0;
@@ -207,21 +205,13 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     if (_BlendMode == 0) { 
         output += bloom;
     }
-    // Multiply
-    else if (_BlendMode == 1) {
-        output *= (1.0f + bloom);
-    }
-    // Color Burn
-    else if (_BlendMode == 2) {
-        output = 1.0f - (1.0f - output) / (1.0f + bloom);
-    }
     // Screen
-    else if (_BlendMode == 3) {
+    else if (_BlendMode == 1) {
         output = 1.0f - (1.0f - output) * (1.0f - bloom);
     }
     // Color Dodge
-    else if (_BlendMode == 4) {
-        output = output / (1.0f - bloom);
+    else if (_BlendMode == 2) {
+        output = output / max(0.01f, (1.0f - (bloom - 0.001f)));
     }
 
     return _DebugBloom ? float4(bloom, col.a) : float4(lerp(col.rgb, output, UIMask), col.a);

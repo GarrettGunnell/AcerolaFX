@@ -36,6 +36,7 @@ uniform bool _SampleSky <
 
 uniform float _DownSampleDelta <
     ui_category = "Advanced settings";
+    ui_category_closed = true;
     ui_min = 0.01f; ui_max = 2.0f;
     ui_label = "Down Sample Delta";
     ui_tooltip = "Adjust sampling offset when downsampling the back buffer";
@@ -43,6 +44,7 @@ uniform float _DownSampleDelta <
 
 uniform float _UpSampleDelta <
     ui_category = "Advanced settings";
+    ui_category_closed = true;
     ui_min = 0.01f; ui_max = 2.0f;
     ui_label = "Up Sample Delta";
     ui_tooltip = "Adjust sampling offset when upsampling the downscaled back buffer";
@@ -50,12 +52,14 @@ uniform float _UpSampleDelta <
 
 uniform bool _DebugBloom <
     ui_category = "Advanced settings";
+    ui_category_closed = true;
     ui_label = "Debug Bloom";
     ui_tooltip = "Render bloom texture to screen for debug purposes"; 
 > = false;
 
 uniform int _BlendMode <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_type = "combo";
     ui_label = "Bloom blend mode";
     ui_tooltip = "Adjust how bloom texture blends into image.";
@@ -66,6 +70,7 @@ uniform int _BlendMode <
 
 uniform float _ExposureCorrect <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Exposure";
     ui_type = "drag";
@@ -74,6 +79,7 @@ uniform float _ExposureCorrect <
 
 uniform float _Temperature <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Temperature";
     ui_type = "drag";
@@ -82,6 +88,7 @@ uniform float _Temperature <
 
 uniform float _Tint <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Tint";
     ui_type = "drag";
@@ -90,6 +97,7 @@ uniform float _Tint <
 
 uniform float _Contrast <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Contrast";
     ui_type = "drag";
@@ -98,6 +106,7 @@ uniform float _Contrast <
 
 uniform float3 _Brightness <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_min = -5.0f; ui_max = 5.0f;
     ui_label = "Brightness";
     ui_type = "drag";
@@ -106,6 +115,7 @@ uniform float3 _Brightness <
 
 uniform float3 _ColorFilter <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Color Filter";
     ui_type = "color";
@@ -114,6 +124,7 @@ uniform float3 _ColorFilter <
 
 uniform float _FilterIntensity <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Color Filter Intensity (HDR)";
     ui_type = "drag";
@@ -122,6 +133,7 @@ uniform float _FilterIntensity <
 
 uniform float _Saturation <
     ui_category = "Color Correction";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Saturation";
     ui_type = "drag";
@@ -154,7 +166,14 @@ float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float UIMask = (tex2D(Common::AcerolaBuffer, uv).a > 0.0f) ? 0.0f : 1.0f;
-    float SkyMask = (ReShade::GetLinearizedDepth(uv) == 1.0f) ? 0.0f : 1.0f;
+    bool SkyMask = ReShade::GetLinearizedDepth(uv) < 1.0f;
+
+    bool leftDepth = ReShade::GetLinearizedDepth(uv + texelSize * float2(-1, 0)) < 1.0f;
+    bool rightDepth = ReShade::GetLinearizedDepth(uv + texelSize * float2(1, 0)) < 1.0f;
+    bool upDepth = ReShade::GetLinearizedDepth(uv + texelSize * float2(0, -1)) < 1.0f;
+    bool downDepth = ReShade::GetLinearizedDepth(uv + texelSize * float2(0, 1)) < 1.0f;
+
+    SkyMask *= leftDepth * rightDepth * upDepth * downDepth;
 
     if (_SampleSky) {
         SkyMask = 1.0f;

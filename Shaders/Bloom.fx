@@ -2,8 +2,12 @@
 #include "Common.fxh"
 #include "Downscales.fxh"
 
-#ifndef NUM_DOWNSCALES
-    #define NUM_DOWNSCALES 1
+#ifndef SAMPLE_SKY
+    #define SAMPLE_SKY 0
+#endif
+
+#ifndef DEBUG_BLOOM
+    #define DEBUG_BLOOM 0
 #endif
 
 uniform float _Threshold <
@@ -27,13 +31,6 @@ uniform float _Intensity <
     ui_tooltip = "Adjust bloom intensity";
 > = 1.0f;
 
-uniform bool _SampleSky <
-    ui_label = "Include Sky";
-    ui_tooltip = "Toggle whether or not the sky is included in bloom (should probably use for gpose)";
-> = false;
-
-// Advanced
-
 uniform float _DownSampleDelta <
     ui_category = "Advanced settings";
     ui_category_closed = true;
@@ -49,13 +46,6 @@ uniform float _UpSampleDelta <
     ui_label = "Up Sample Delta";
     ui_tooltip = "Adjust sampling offset when upsampling the downscaled back buffer";
 > = 0.5f;
-
-uniform bool _DebugBloom <
-    ui_category = "Advanced settings";
-    ui_category_closed = true;
-    ui_label = "Debug Bloom";
-    ui_tooltip = "Render bloom texture to screen for debug purposes"; 
-> = false;
 
 uniform int _BlendMode <
     ui_category = "Color Correction";
@@ -166,6 +156,10 @@ float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float UIMask = (tex2D(Common::AcerolaBuffer, uv).a > 0.0f) ? 0.0f : 1.0f;
+
+    #if SAMPLE_SKY
+    bool SkyMask = true;
+    #else
     bool SkyMask = ReShade::GetLinearizedDepth(uv) < 1.0f;
 
     bool leftDepth = ReShade::GetLinearizedDepth(uv + texelSize * float2(-1, 0)) < 1.0f;
@@ -174,10 +168,7 @@ float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     bool downDepth = ReShade::GetLinearizedDepth(uv + texelSize * float2(0, 1)) < 1.0f;
 
     SkyMask *= leftDepth * rightDepth * upDepth * downDepth;
-
-    if (_SampleSky) {
-        SkyMask = 1.0f;
-    }
+    #endif
 
     float4 output = float4(Prefilter(pow(abs(SampleBox(ReShade::BackBuffer, uv, texelSize, 1.0f)), 2.2f).rgb) * UIMask * SkyMask, 1.0f);
     
@@ -190,20 +181,34 @@ float4 Scale(float4 pos : SV_POSITION, float2 uv : TEXCOORD, sampler2D buffer, i
     return float4(SampleBox(buffer, uv, texelSize, sampleDelta), 1.0f);
 }
 
+#if NUM_DOWNSCALES > 1
 float4 PS_Down1(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Half, 2, _DownSampleDelta); }
+#if NUM_DOWNSCALES > 2
 float4 PS_Down2(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Quarter, 4, _DownSampleDelta); }
+#if NUM_DOWNSCALES > 3
 float4 PS_Down3(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Eighth, 8, _DownSampleDelta); }
+#if NUM_DOWNSCALES > 4
 float4 PS_Down4(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Sixteenth, 16, _DownSampleDelta); }
+#if NUM_DOWNSCALES > 5
 float4 PS_Down5(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::ThirtySecondth, 32, _DownSampleDelta); }
+#if NUM_DOWNSCALES > 6
 float4 PS_Down6(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::SixtyFourth, 64, _DownSampleDelta); }
+#if NUM_DOWNSCALES > 7
 float4 PS_Down7(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::OneTwentyEighth, 128, _DownSampleDelta); }
 float4 PS_Up1(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::TwoFiftySixth, 256, _UpSampleDelta); }
+#endif
 float4 PS_Up2(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::OneTwentyEighth, 128, _UpSampleDelta); }
+#endif
 float4 PS_Up3(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::SixtyFourth, 64, _UpSampleDelta); }
+#endif
 float4 PS_Up4(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::ThirtySecondth, 32, _UpSampleDelta); }
+#endif
 float4 PS_Up5(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Sixteenth, 16, _UpSampleDelta); }
+#endif
 float4 PS_Up6(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Eighth, 8, _UpSampleDelta); }
+#endif
 float4 PS_Up7(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Quarter, 4, _UpSampleDelta); }
+#endif
 
 float3 ColorCorrect(float3 col) : SV_TARGET {
     col *= _ExposureCorrect;
@@ -241,7 +246,11 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
         output = output / max(0.01f, (1.0f - (bloom - 0.001f)));
     }
 
-    return _DebugBloom ? float4(bloom, col.a) : float4(lerp(col.rgb, output, UIMask), col.a);
+    #if DEBUG_BLOOM
+    return float4(bloom, col.a);
+    #else
+    return float4(lerp(col.rgb, output, UIMask), col.a);
+    #endif
 }
 
 technique Bloom  <ui_tooltip = "(HDR)(HIGH PERFORMANCE COST) Blend the brighter areas of the screen into itself to exaggerate highlights."; >  {
@@ -281,14 +290,12 @@ technique Bloom  <ui_tooltip = "(HDR)(HIGH PERFORMANCE COST) Blend the brighter 
         VertexShader = PostProcessVS;
         PixelShader = PS_Down5;
     }
-
     #if NUM_DOWNSCALES > 6
     pass Down6 {
         RenderTarget = DownScale::OneTwentyEighthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down6;
     }
-
     #if NUM_DOWNSCALES > 7
     pass Down7 {
         RenderTarget = DownScale::TwoFiftySixthTex;
@@ -304,7 +311,6 @@ technique Bloom  <ui_tooltip = "(HDR)(HIGH PERFORMANCE COST) Blend the brighter 
         PixelShader = PS_Up1;
     }
     #endif
-
     pass Up2 {
         RenderTarget = DownScale::SixtyFourthTex;
         BlendEnable = true;
@@ -313,49 +319,44 @@ technique Bloom  <ui_tooltip = "(HDR)(HIGH PERFORMANCE COST) Blend the brighter 
         PixelShader = PS_Up2;
     }
     #endif
-    
     pass Up3 {
         RenderTarget = DownScale::ThirtySecondthTex;
-        BlendEnable = true;
-        DestBlend = ONE;
-        VertexShader = PostProcessVS;
-        PixelShader = PS_Up1;
-    }
-    #endif
-
-    pass Up4 {
-        RenderTarget = DownScale::SixteenthTex;
-        BlendEnable = true;
-        DestBlend = ONE;
-        VertexShader = PostProcessVS;
-        PixelShader = PS_Up2;
-    }
-    #endif
-
-    pass Up5 {
-        RenderTarget = DownScale::EighthTex;
         BlendEnable = true;
         DestBlend = ONE;
         VertexShader = PostProcessVS;
         PixelShader = PS_Up3;
     }
     #endif
-
-    pass Up6 {
-        RenderTarget = DownScale::QuarterTex;
+    pass Up4 {
+        RenderTarget = DownScale::SixteenthTex;
         BlendEnable = true;
         DestBlend = ONE;
         VertexShader = PostProcessVS;
         PixelShader = PS_Up4;
     }
     #endif
-
+    pass Up5 {
+        RenderTarget = DownScale::EighthTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up5;
+    }
+    #endif
+    pass Up6 {
+        RenderTarget = DownScale::QuarterTex;
+        BlendEnable = true;
+        DestBlend = ONE;
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Up6;
+    }
+    #endif
     pass Up7 {
         RenderTarget = DownScale::HalfTex;
         BlendEnable = true;
         DestBlend = ONE;
         VertexShader = PostProcessVS;
-        PixelShader = PS_Up5;
+        PixelShader = PS_Up7;
     }
     #endif
 

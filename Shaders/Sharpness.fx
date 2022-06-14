@@ -22,7 +22,7 @@ uniform float _Offset <
     ui_tooltip = "Offset distance at which sharpness falloff occurs";
 > = 200.0f;
 
-texture2D SharpnessTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+texture2D SharpnessTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Sharpness { Texture = SharpnessTex; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Sharpness, uv).rgba; }
 

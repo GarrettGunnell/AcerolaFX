@@ -57,7 +57,7 @@ uniform float _Saturation <
     ui_tooltip = "Adjust saturation";
 > = 1.0f;
 
-texture2D ColorCorrectionTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+texture2D ColorCorrectionTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D ColorCorrection { Texture = ColorCorrectionTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ColorCorrection, uv).rgba; }
 

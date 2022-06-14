@@ -20,7 +20,7 @@ float4 GetMax(float4 x, float4 y, float4 z) {
     return max(x, max(y, z));
 }
 
-texture2D AdaptiveSharpnessTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; }; 
+texture2D AdaptiveSharpnessTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; }; 
 sampler2D AdaptiveSharpness { Texture = AdaptiveSharpnessTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AdaptiveSharpness, uv).rgba; }
 

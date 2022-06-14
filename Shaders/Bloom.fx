@@ -249,7 +249,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     #if DEBUG_BLOOM
     return float4(bloom, col.a);
     #else
-    return float4(lerp(col.rgb, output, UIMask), col.a);
+    return float4(output, col.a);
     #endif
 }
 

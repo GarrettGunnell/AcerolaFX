@@ -16,9 +16,7 @@ float4 PS_Gamma(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float4 col = saturate(tex2D(Common::AcerolaBuffer, uv).rgba);
     float UIMask = 1.0f - col.a;
 
-    float3 output = saturate(pow(abs(col.rgb), _Gamma));
-    
-    return float4(lerp(col.rgb, output, UIMask), col.a);
+    return saturate(pow(abs(col), _Gamma));
 }
 
 technique Gamma < ui_tooltip = "(LDR) Adjusts the gamma correction of the screen."; > {

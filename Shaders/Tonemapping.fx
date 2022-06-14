@@ -167,7 +167,7 @@ float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
     output = saturate(output);
 
-    return float4(lerp(col.rgb, output, UIMask), col.a);
+    return float4(output, col.a);
 }
 
 technique Tonemapping  <ui_tooltip = "(HDR -> LDR) Converts all previous HDR passes into LDR."; >  {

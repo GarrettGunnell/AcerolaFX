@@ -79,7 +79,7 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
     output = lerp(Common::Luminance(output), output, _Saturation);
 
-    return float4(lerp(col.rgb, output, UIMask), col.a);
+    return float4(output, col.a);
 }
 
 technique ColorCorrection  <ui_tooltip = "(HDR) A suite of color correction effects."; >  {

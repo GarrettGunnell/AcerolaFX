@@ -80,7 +80,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
 
     output = lerp(a, saturate(output), _Strength * skyMask);
 
-    return float4(lerp(output, col.rgb, col.a), col.a);
+    return float4(output, col.a);
 }
 
 technique Blend <ui_tooltip = "(LDR) Blends either a flat color or the render with itself using photoshop blend mode formulas."; > {

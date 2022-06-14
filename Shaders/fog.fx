@@ -43,7 +43,6 @@ float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv).rgba;
-    float UIMask = 1.0f - col.a;
 
     float depth = ReShade::GetLinearizedDepth(uv);
     float viewDistance = depth * _ZProjection;
@@ -60,7 +59,7 @@ float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
 
     float3 fogOutput = lerp(_FogColor, col.rgb, saturate(fogFactor));
 
-    return float4(lerp(col.rgb, fogOutput, UIMask), col.a);
+    return float4(fogOutput, col.a);
 }
 
 technique Fog  <ui_tooltip = "(LDR) Applies a color to distant pixels to exaggerate distance."; >  {

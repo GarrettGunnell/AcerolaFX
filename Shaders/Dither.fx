@@ -106,7 +106,7 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
     output.g = floor((_GreenColorCount - 1.0f) * output.g + 0.5) / (_GreenColorCount - 1.0f);
     output.b = floor((_BlueColorCount - 1.0f) * output.b + 0.5) / (_BlueColorCount - 1.0f);
 
-   return float4(lerp(output.rgb, UI.rgb, UI.a * _MaskUI), UI.a);
+   return output;
 }
 
 technique Dither  <ui_tooltip = "(LDR) Reduces the color palette of the image with ordered dithering."; >  {

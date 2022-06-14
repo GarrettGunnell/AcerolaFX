@@ -8,15 +8,15 @@ uniform float _Sharpness <
     ui_tooltip = "Adjust sharpening";
 > = 1.0f;
 
-float4 Sample(float2 uv, float deltaX, float deltaY) {
-    return saturate(tex2D(Common::AcerolaBuffer, uv + float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * float2(deltaX, deltaY)));
+float3 Sample(float2 uv, float deltaX, float deltaY) {
+    return saturate(tex2D(Common::AcerolaBuffer, uv + float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * float2(deltaX, deltaY)).rgb);
 }
 
-float4 GetMin(float4 x, float4 y, float4 z) {
+float3 GetMin(float3 x, float3 y, float3 z) {
     return min(x, min(y, z));
 }
 
-float4 GetMax(float4 x, float4 y, float4 z) {
+float3 GetMax(float3 x, float3 y, float3 z) {
     return max(x, max(y, z));
 }
 
@@ -31,38 +31,36 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
 
     float sharpness = -(1.0f / lerp(8.0f, 5.0f, saturate(_Sharpness)));
 
-    float4 a = Sample(uv, -1, -1);
-    float4 b = Sample(uv,  0, -1);
-    float4 c = Sample(uv,  1, -1);
-    float4 d = Sample(uv, -1,  0);
-    float4 e = Sample(uv,  0,  0);
-    float4 f = Sample(uv,  1,  0);
-    float4 g = Sample(uv, -1,  1);
-    float4 h = Sample(uv,  0,  1);
-    float4 i = Sample(uv,  1,  1);
+    float3 a = Sample(uv, -1, -1);
+    float3 b = Sample(uv,  0, -1);
+    float3 c = Sample(uv,  1, -1);
+    float3 d = Sample(uv, -1,  0);
+    float3 e = Sample(uv,  0,  0);
+    float3 f = Sample(uv,  1,  0);
+    float3 g = Sample(uv, -1,  1);
+    float3 h = Sample(uv,  0,  1);
+    float3 i = Sample(uv,  1,  1);
 
-    float UIMask = saturate(1.0f - a.a - b.a - c.a - d.a - e.a - f.a - g.a - h.a - i.a);
-
-    float4 minRGB = GetMin(GetMin(d, e, f), b, h);
-    float4 minRGB2 = GetMin(GetMin(minRGB, a, c), g, i);
+    float3 minRGB = GetMin(GetMin(d, e, f), b, h);
+    float3 minRGB2 = GetMin(GetMin(minRGB, a, c), g, i);
 
     minRGB += minRGB2;
 
-    float4 maxRGB = GetMax(GetMax(d, e, f), b, h);
-    float4 maxRGB2 = GetMax(GetMax(maxRGB, a, c), g, i);
+    float3 maxRGB = GetMax(GetMax(d, e, f), b, h);
+    float3 maxRGB2 = GetMax(GetMax(maxRGB, a, c), g, i);
 
     maxRGB += maxRGB2;
 
-    float4 rcpM = 1.0f / maxRGB;
-    float4 amp = saturate(min(minRGB, 2.0f - maxRGB) * rcpM);
+    float3 rcpM = 1.0f / maxRGB;
+    float3 amp = saturate(min(minRGB, 2.0f - maxRGB) * rcpM);
     amp = sqrt(amp);
 
-    float4 w = amp * sharpness;
-    float4 rcpW = 1.0f / (1.0f + 4.0f * w);
+    float3 w = amp * sharpness;
+    float3 rcpW = 1.0f / (1.0f + 4.0f * w);
 
-    float4 output = saturate((b * w + d * w + f * w + h * w + e) * rcpW);
+    float3 output = saturate((b * w + d * w + f * w + h * w + e) * rcpW);
 
-    return float4(lerp(col.rgb, output.rgb, UIMask), col.a);
+    return float4(output, col.a);
 }
 
 technique AdaptiveSharpness <ui_tooltip = "(LDR)(HIGH PERFORMANCE COST) Adaptively increases the contrast between edges to create the illusion of high detail."; > {

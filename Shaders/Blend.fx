@@ -36,6 +36,11 @@ uniform float _Strength <
     ui_tooltip = "Adjust how strong the blending is";
 > = 0.0f;
 
+uniform bool _SampleSky <
+    ui_label = "Blend Sky";
+    ui_tooltip = "Include sky in blend";
+> = true;
+
 texture2D BlendTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Blend { Texture = BlendTex; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Blend, uv).rgba; }
@@ -44,6 +49,12 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float3 a = saturate(col.rgb);
     float3 b = _ColorBlend ? _BlendColor : saturate(col.rgb);
+
+    bool skyMask = true;
+
+    if (_SampleSky) {
+        skyMask = ReShade::GetLinearizedDepth(uv) < 1.0f;
+    }
 
     float3 output = a; 
     if (_BlendMode == 1)
@@ -67,7 +78,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     else if (_BlendMode == 10)
         output = (Common::Luminance(b) < 0.5) ? 1.0f - ((1.0f - a) / (4.0f * (b + 0.001f))) - 0.25f : a / (4.0f * (1.0f - (b - 0.001f))) + 0.25;
 
-    output = lerp(a, saturate(output), _Strength);
+    output = lerp(a, saturate(output), _Strength * skyMask);
 
     return float4(lerp(output, col.rgb, col.a), col.a);
 }

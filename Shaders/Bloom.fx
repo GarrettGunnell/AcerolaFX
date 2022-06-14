@@ -150,7 +150,7 @@ float3 Prefilter(float3 col) {
 }
 
 texture2D BloomTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Bloom { Texture = BloomTex; };
+sampler2D Bloom { Texture = BloomTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Bloom, uv).rgba; }
 
 float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -160,7 +160,7 @@ float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     #if SAMPLE_SKY
     bool SkyMask = true;
     #else
-    bool SkyMask = ReShade::GetLinearizedDepth(uv) < 1.0f;
+    bool SkyMask = ReShade::GetLinearizedDepth(uv) < 0.98f;
 
     bool leftDepth = ReShade::GetLinearizedDepth(uv + texelSize * float2(-1, 0)) < 1.0f;
     bool rightDepth = ReShade::GetLinearizedDepth(uv + texelSize * float2(1, 0)) < 1.0f;
@@ -170,7 +170,7 @@ float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     SkyMask *= leftDepth * rightDepth * upDepth * downDepth;
     #endif
 
-    float4 output = float4(Prefilter(pow(abs(SampleBox(ReShade::BackBuffer, uv, texelSize, 1.0f)), 2.2f).rgb) * UIMask * SkyMask, 1.0f);
+    float4 output = float4(Prefilter(pow(abs(SampleBox(Common::AcerolaBuffer, uv, texelSize, 1.0f)), 2.2f).rgb) * UIMask * SkyMask, 1.0f);
     
     return output;
 }

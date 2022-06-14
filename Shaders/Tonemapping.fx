@@ -136,8 +136,8 @@ float3 Hable(float3 col) {
     return saturate(Cout);
 }
 
-texture2D ToneMapTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D ToneMap { Texture = ToneMapTex; };
+texture2D ToneMapTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; }; 
+sampler2D ToneMap { Texture = ToneMapTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ToneMap, uv).rgba; }
 
 float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

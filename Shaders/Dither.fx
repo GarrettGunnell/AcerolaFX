@@ -86,7 +86,7 @@ float GetBayer8(int x, int y) {
 
 texture2D DitherTex { Width = WIDTH; Height = HEIGHT; Format = RGBA16F; }; 
 sampler2D Dither { Texture = DitherTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Common::AcerolaPointBuffer, uv); }
+float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Common::AcerolaBuffer, uv); }
 
 float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Dither, uv);

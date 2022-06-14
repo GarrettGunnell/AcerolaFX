@@ -41,8 +41,8 @@ uniform bool _MaskUI <
     ui_tooltip = "Mask UI from dithering";
 > = true;
 
-texture2D CRTTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D CRT { Texture = CRTTex; };
+texture2D CRTTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; }; 
+sampler2D CRT { Texture = CRTTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(CRT, uv).rgba; }
 
 float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

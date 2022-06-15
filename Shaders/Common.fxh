@@ -9,7 +9,7 @@ namespace Common {
     }; sampler2D AcerolaBuffer { Texture = AcerolaBufferTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
     float Luminance(float3 color) {
-        return dot(color, float3(0.299f, 0.587f, 0.114f));
+        return dot(color, float3(0.2127f, 0.7152f, 0.0722f));
     }
 
     //https://docs.unity3d.com/Packages/com.unity.shadergraph@6.9/manual/White-Balance-Node.html

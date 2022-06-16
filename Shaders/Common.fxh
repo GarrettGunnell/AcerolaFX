@@ -47,6 +47,48 @@ namespace Common {
 
         float3 lms = mul(LIN_2_LMS_MAT, col);
         lms *= balance;
+
         return mul(LMS_2_LIN_MAT, lms);
+    }
+
+    float3 convertRGB2XYZ(float3 col) {
+        float3 xyz;
+        xyz.x = dot(float3(0.4124564, 0.3575761, 0.1804375), col);
+        xyz.y = dot(float3(0.2126729, 0.7151522, 0.0721750), col);
+        xyz.z = dot(float3(0.0193339, 0.1191920, 0.9503041), col);
+
+        return xyz;
+    }
+
+    float3 convertXYZ2Yxy(float3 col) {
+        float inv = 1.0f / dot(col, 1.0f);
+
+        return float3(col.y, col.x * inv, col.y * inv);
+    }
+
+    float3 convertRGB2Yxy(float3 col) {
+        return convertXYZ2Yxy(convertRGB2XYZ(col));
+    }
+
+    float3 convertXYZ2RGB(float3 col) {
+        float3 rgb;
+        rgb.x = dot(float3( 3.2404542, -1.5371385, -0.4985314), col);
+        rgb.y = dot(float3(-0.9692660,  1.8760108,  0.0415560), col);
+        rgb.z = dot(float3( 0.0556434, -0.2040259,  1.0572252), col);
+
+        return rgb;
+    }
+
+    float3 convertYxy2XYZ(float3 col) {
+        float3 xyz;
+        xyz.x = col.x * col.y / col.z;
+        xyz.y = col.x;
+        xyz.z = col.x * (1.0 - col.y - col.z) / col.z;
+
+        return xyz;
+    }
+
+    float3 convertYxy2RGB(float3 col) {
+        return convertXYZ2RGB(convertYxy2XYZ(col));
     }
 }

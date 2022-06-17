@@ -7,14 +7,14 @@ uniform float _MinLogLuminance <
     ui_label = "Min Log Luminance";
     ui_type = "drag";
     ui_tooltip = "Adjust the minimum log luminance.";
-> = -10.0f;
+> = -5.0f;
 
 uniform float _MaxLogLuminance <
     ui_min = -20.0f; ui_max = 20.0f;
     ui_label = "Max Log Luminance";
     ui_type = "drag";
     ui_tooltip = "Adjust the maximum log luminance.";
-> = 2.0f;
+> = -2.5f;
 
 uniform float _Tau <
     ui_category = "Advanced Settings";
@@ -23,7 +23,7 @@ uniform float _Tau <
     ui_label = "Tau";
     ui_type = "drag";
     ui_tooltip = "Adjust rate at which auto exposure adjusts.";
-> = 1.1f;
+> = 5.0f;
 
 uniform float _DeltaTime < source = "frametime"; >;
 

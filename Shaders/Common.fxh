@@ -7,6 +7,7 @@ namespace Common {
 
         Format = RGBA16F;
     }; sampler2D AcerolaBuffer { Texture = AcerolaBufferTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+    sampler2D AcerolaBufferLinear { Texture = AcerolaBufferTex; };
 
     float Luminance(float3 color) {
         return dot(color, float3(0.2127f, 0.7152f, 0.0722f));

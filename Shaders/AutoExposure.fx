@@ -1,5 +1,6 @@
 #include "ReShade.fxh"
 #include "Common.fxh"
+#include "Downscales.fxh"
 
 uniform float _MinLogLuminance <
     ui_min = -20.0f; ui_max = 20.0f;
@@ -28,8 +29,10 @@ uniform float _DeltaTime < source = "frametime"; >;
 
 
 #define DIVIDE_ROUNDING_UP(n, d) uint(((n) + (d) - 1) / (d))
-#define DISPATCH_X DIVIDE_ROUNDING_UP(BUFFER_WIDTH, 16)
-#define DISPATCH_Y DIVIDE_ROUNDING_UP(BUFFER_HEIGHT, 16)
+#define WIDTH BUFFER_WIDTH / 2
+#define HEIGHT BUFFER_HEIGHT / 2
+#define DISPATCH_X DIVIDE_ROUNDING_UP(WIDTH, 16)
+#define DISPATCH_Y DIVIDE_ROUNDING_UP(HEIGHT, 16)
 #define TILE_COUNT (DISPATCH_X * DISPATCH_Y)
 
 #define LOG_RANGE (_MaxLogLuminance - _MinLogLuminance)
@@ -70,10 +73,10 @@ void ConstructHistogramTiles(uint groupIndex : SV_GROUPINDEX, uint3 tid : SV_DIS
 
     barrier();
 
-    if (tid.x < BUFFER_WIDTH && tid.y < BUFFER_HEIGHT) {
-        float4 col = tex2Dfetch(Common::AcerolaBuffer, tid.xy);
-            uint binIndex = ColorToHistogramBin(col.rgb);
-            atomicAdd(HistogramShared[binIndex], 1);
+    if (tid.x < WIDTH && tid.y < HEIGHT) {
+        float4 col = tex2Dfetch(DownScale::Half, tid.xy);
+        uint binIndex = ColorToHistogramBin(col.rgb);
+        atomicAdd(HistogramShared[binIndex], 1);
     }
 
     barrier();
@@ -90,10 +93,10 @@ void MergeHistogramTiles(uint3 tid : SV_DISPATCHTHREADID, uint3 gtid : SV_GROUPT
 
     barrier();
 
-    float2 coord = float2(tid.x * 8, tid.y) + 0.5;
+    float2 coord = float2(tid.x * 4, tid.y) + 0.5;
     uint histValues = 0;
     [unroll]
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 4; ++i)
         histValues += tex2Dfetch(HistogramTileSampler, coord + float2(i, 0)).r;
 
     atomicAdd(mergedBin, histValues);
@@ -122,12 +125,19 @@ void CalculateHistogramAverage(uint3 tid : SV_DISPATCHTHREADID) {
     }
 
     if (tid.x == 0) {
-        float weightedLogAverage = (HistogramAvgShared[0] / max((float)(BUFFER_WIDTH * BUFFER_HEIGHT) - countForThisBin, 1.0f)) - 1.0f;
+        float weightedLogAverage = (HistogramAvgShared[0] / max((float)(WIDTH * HEIGHT) - countForThisBin, 1.0f)) - 1.0f;
         float weightedAverageLuminance = exp2(((weightedLogAverage / 254.0f) * LOG_RANGE) + _MinLogLuminance);
         float luminanceLastFrame = tex2Dfetch(HistogramAverage, uint2(0, 0)).r;
         float adaptedLuminance = luminanceLastFrame + (weightedAverageLuminance - luminanceLastFrame) * (1 - exp(-_DeltaTime * _Tau));
         tex2Dstore(HistogramAverageBuffer, uint2(0, 0), adaptedLuminance);
     }
+}
+
+float4 PS_Downscale(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float4 col = tex2D(Common::AcerolaBufferLinear, uv);
+    float4 originalCol = tex2D(ReShade::BackBuffer, uv);
+
+    return lerp(col, originalCol, originalCol.a);
 }
 
 float4 PS_AutoExposure(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -144,6 +154,13 @@ float4 PS_AutoExposure(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
 
 technique AutoExposure {
+    pass Downscale {
+        RenderTarget = DownScale::HalfTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Downscale;
+    }
+
     pass HistogramTiles {
         ComputeShader = ConstructHistogramTiles<16, 16>;
         DispatchSizeX = DISPATCH_X;
@@ -151,7 +168,7 @@ technique AutoExposure {
     }
 
     pass Histogram {
-        ComputeShader = MergeHistogramTiles<DIVIDE_ROUNDING_UP(TILE_COUNT, 8), 1>;
+        ComputeShader = MergeHistogramTiles<DIVIDE_ROUNDING_UP(TILE_COUNT, 4), 1>;
         DispatchSizeX = 1;
         DispatchSizeY = 256;
     }

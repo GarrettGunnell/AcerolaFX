@@ -8,6 +8,24 @@ uniform float _Sharpness <
     ui_tooltip = "Adjust sharpening";
 > = 1.0f;
 
+uniform float _SharpnessFalloff <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 0.01f;
+    ui_label = "Sharpness Falloff";
+    ui_type = "slider";
+    ui_tooltip = "Adjust rate at which sharpness falls off at a distance";
+> = 0.0f;
+
+uniform float _Offset <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 1000.0f;
+    ui_label = "Falloff Offset";
+    ui_type = "slider";
+    ui_tooltip = "Offset distance at which sharpness starts to falloff";
+> = 0.0f;
+
 float3 Sample(float2 uv, float deltaX, float deltaY) {
     return saturate(tex2D(Common::AcerolaBuffer, uv + float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT) * float2(deltaX, deltaY)).rgb);
 }
@@ -59,6 +77,18 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
     float3 rcpW = 1.0f / (1.0f + 4.0f * w);
 
     float3 output = saturate((b * w + d * w + f * w + h * w + e) * rcpW);
+
+    if (_SharpnessFalloff > 0.0f) {
+        float depth = ReShade::GetLinearizedDepth(uv);
+        float viewDistance = depth * 1000;
+
+        float falloffFactor = 0.0f;
+
+        falloffFactor = (_SharpnessFalloff / log(2)) * max(0.0f, viewDistance - _Offset);
+        falloffFactor = exp2(-falloffFactor);
+
+        output = lerp(col.rgb, output, saturate(falloffFactor));
+    }
 
     return float4(output, col.a);
 }

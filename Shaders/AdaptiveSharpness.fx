@@ -8,6 +8,20 @@ uniform float _Sharpness <
     ui_tooltip = "Adjust sharpening";
 > = 1.0f;
 
+uniform float _Const0 <
+    ui_min = 0.0f; ui_max = 50.0f;
+    ui_label = "const0";
+    ui_type = "drag";
+    ui_tooltip = "Adjust sharpening";
+> = 8.0f;
+
+uniform float _Const1 <
+    ui_min = 0.0f; ui_max = 50.0f;
+    ui_label = "const1";
+    ui_type = "drag";
+    ui_tooltip = "Adjust sharpening";
+> = 5.0f;
+
 uniform float _SharpnessFalloff <
     ui_category = "Advanced Settings";
     ui_category_closed = true;
@@ -47,7 +61,8 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
 
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
-    float sharpness = -(1.0f / lerp(8.0f, 5.0f, saturate(_Sharpness)));
+    float sharpness = 0;
+    sharpness = -(1.0f / lerp(10.0f, 7.0f, saturate(_Sharpness)));
 
     float3 a = Sample(uv, -1, -1);
     float3 b = Sample(uv,  0, -1);

@@ -60,9 +60,7 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
     float4 col = saturate(tex2D(Common::AcerolaBuffer, uv));
 
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-
-    float sharpness = 0;
-    sharpness = -(1.0f / lerp(10.0f, 7.0f, saturate(_Sharpness)));
+    float sharpness = -(1.0f / lerp(10.0f, 7.0f, saturate(_Sharpness)));
 
     float3 a = Sample(uv, -1, -1);
     float3 b = Sample(uv,  0, -1);

@@ -22,28 +22,35 @@ uniform float _EffectFalloffRange <
     ui_tooltip = "Distant samples contribute less.";
 > = 0.615f;
 
-texture2D OutDepths0Tex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; }; 
+texture2D OutDepths0Tex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
 sampler2D OutDepths0 { Texture = OutDepths0Tex; };
 storage2D s_OutDepths0 { Texture = OutDepths0Tex; };
 
-texture2D OutDepths1Tex { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R16F; }; 
+texture2D OutDepths1Tex { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R32F; }; 
 sampler2D OutDepths1 { Texture = OutDepths1Tex; };
 storage2D s_OutDepths1 { Texture = OutDepths1Tex; };
 
-texture2D OutDepths2Tex { Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; Format = R16F; }; 
+texture2D OutDepths2Tex { Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; Format = R32F; }; 
 sampler2D OutDepths2 { Texture = OutDepths2Tex; };
 storage2D s_OutDepths2 { Texture = OutDepths2Tex; };
 
-texture2D OutDepths3Tex { Width = BUFFER_WIDTH / 8; Height = BUFFER_HEIGHT / 8; Format = R16F; }; 
+texture2D OutDepths3Tex { Width = BUFFER_WIDTH / 8; Height = BUFFER_HEIGHT / 8; Format = R32F; }; 
 sampler2D OutDepths3 { Texture = OutDepths3Tex; };
 storage2D s_OutDepths3 { Texture = OutDepths3Tex; };
 
-texture2D OutDepths4Tex { Width = BUFFER_WIDTH / 16; Height = BUFFER_HEIGHT / 16; Format = R16F; }; 
+texture2D OutDepths4Tex { Width = BUFFER_WIDTH / 16; Height = BUFFER_HEIGHT / 16; Format = R32F; }; 
 sampler2D OutDepths4 { Texture = OutDepths4Tex; };
 storage2D s_OutDepths4 { Texture = OutDepths4Tex; };
 
+texture2D OutEdgesTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D OutEdges { Texture = OutEdgesTex; };
+storage2D s_OutEdges { Texture = OutEdgesTex; };
+
 #define CLIP_FAR 1000.0f
 #define CLIP_NEAR 0.03f
+
+#define NUM_THREADS_X 8
+#define NUM_THREADS_Y 8
 
 float DepthMIPFilter(float depth0, float depth1, float depth2, float depth3) {
     float maxDepth = max(max(depth0, depth1), max(depth2, depth3));
@@ -68,6 +75,9 @@ float ScreenSpaceToViewSpaceDepth(float depth) {
     float depthLinearizeMul = (CLIP_FAR * CLIP_NEAR) / (CLIP_FAR - CLIP_NEAR);
     float depthLinearizeAdd = CLIP_FAR / (CLIP_FAR - CLIP_NEAR);
 
+    if (depthLinearizeMul * depthLinearizeAdd < 0)
+        depthLinearizeAdd = -depthLinearizeAdd;
+
     return depthLinearizeMul / (depthLinearizeAdd - depth);
 }
 
@@ -76,7 +86,7 @@ float ClampDepth(float depth) {
 }
 
 groupshared float g_scratchDepths[64];
-void PrefilterDepths_CS(uint3 tid : SV_DISPATCHTHREADID, uint3 gtid : SV_GROUPTHREADID) {
+void CS_PrefilterDepths(uint3 tid : SV_DISPATCHTHREADID, uint3 gtid : SV_GROUPTHREADID) {
     // MIP 0
     const uint2 baseCoord = tid.xy;
     const uint2 pixCoord = baseCoord * 2;
@@ -143,16 +153,93 @@ void PrefilterDepths_CS(uint3 tid : SV_DISPATCHTHREADID, uint3 gtid : SV_GROUPTH
     }
 }
 
+float4 CalculateEdges(const float centerZ, const float leftZ, const float rightZ, const float topZ, const float bottomZ) {
+    float4 edgesLRTB = float4(leftZ, rightZ, topZ, bottomZ) - centerZ;
+
+    float slopeLR = (edgesLRTB.y - edgesLRTB.x) * 0.5f;
+    float slopeTB = (edgesLRTB.w - edgesLRTB.z) * 0.5f;
+    float4 edgesLRTBSlopeAdjusted = edgesLRTB + float4(slopeLR, -slopeLR, slopeTB, -slopeTB);
+    edgesLRTB = min(abs(edgesLRTB), abs(edgesLRTBSlopeAdjusted));
+
+    return float4(saturate((1.25 - edgesLRTB / (centerZ * 0.011))));
+}
+
+float4 PackEdges(float4 edges) {
+    edges = round( saturate( edges ) * 2.9 );
+    return dot( edges, float4( 64.0 / 255.0, 16.0 / 255.0, 4.0 / 255.0, 1.0 / 255.0 ) ) ;
+}
+
+float3 ComputeViewspacePosition(const float2 screenPos, const float viewspaceDepth) {
+    float3 pos;
+    pos.xy = screenPos.xy * viewspaceDepth;
+    pos.z = viewspaceDepth;
+
+    return pos;
+}
+
+float3 CalculateNormal(float4 edgesLRTB, float3 pixCenterPos, float3 pixLPos, float3 pixRPos, float3 pixTPos, float3 pixBPos) {
+    float4 acceptedNormals  = saturate( float4( edgesLRTB.x*edgesLRTB.z, edgesLRTB.z*edgesLRTB.y, edgesLRTB.y*edgesLRTB.w, edgesLRTB.w*edgesLRTB.x ) + 0.01 );
+
+    pixLPos = normalize(pixLPos - pixCenterPos);
+    pixRPos = normalize(pixRPos - pixCenterPos);
+    pixTPos = normalize(pixTPos - pixCenterPos);
+    pixBPos = normalize(pixBPos - pixCenterPos);
+
+    float3 pixelNormal =  acceptedNormals.x * cross( pixLPos, pixTPos ) +
+                        + acceptedNormals.y * cross( pixTPos, pixRPos ) +
+                        + acceptedNormals.z * cross( pixRPos, pixBPos ) +
+                        + acceptedNormals.w * cross( pixBPos, pixLPos );
+    pixelNormal = normalize( pixelNormal );
+
+    return pixelNormal; 
+}
+
+void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
+    const float2 viewportPixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float2 normalizedScreenPos = (tid.xy + 0.5f) * viewportPixelSize;
+
+    float4 valuesUL = tex2DgatherR(OutDepths0, float2(tid.xy * viewportPixelSize));
+    float4 valuesBR = tex2DgatherR(OutDepths0, float2(tid.xy * viewportPixelSize), int2(1, 1));
+
+    float viewspaceZ = valuesUL.y;
+
+    float pixLZ = valuesUL.x;
+    float pixTZ = valuesUL.z;
+    float pixRZ = valuesUL.z;
+    float pixBZ = valuesUL.x;
+    
+    float4 edgesLRTB = CalculateEdges(viewspaceZ, pixLZ, pixRZ, pixTZ, pixBZ);
+    tex2Dstore(s_OutEdges, tid.xy, PackEdges(edgesLRTB));
+
+    float3 center = ComputeViewspacePosition(normalizedScreenPos, viewspaceZ);
+    float3 left   = ComputeViewspacePosition(normalizedScreenPos + float2(-1,  0) * viewportPixelSize, pixLZ);
+    float3 right  = ComputeViewspacePosition(normalizedScreenPos + float2( 1,  0) * viewportPixelSize, pixRZ);
+    float3 top    = ComputeViewspacePosition(normalizedScreenPos + float2( 0, -1) * viewportPixelSize, pixTZ);
+    float3 bottom = ComputeViewspacePosition(normalizedScreenPos + float2( 0,  1) * viewportPixelSize, pixBZ);
+    
+    float3 viewspaceNormal = CalculateNormal(edgesLRTB, center, left, right, top, bottom);
+
+    viewspaceZ *= 0.99999;
+
+    const float3 viewVec = normalize(-center);
+}
+
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     //return tex2D(ReShade::DepthBuffer, uv).r; 
-    return tex2D(OutDepths0, uv).r; 
+    return tex2D(OutEdges, uv); 
 }
 
 technique SSAO {
     pass PrefilterDepths {
-        ComputeShader = PrefilterDepths_CS<8, 8>;
+        ComputeShader = CS_PrefilterDepths<8, 8>;
         DispatchSizeX = (BUFFER_WIDTH + 15) / 16;
         DispatchSizeY = (BUFFER_HEIGHT + 15) / 16;
+    }
+
+    pass MainPass {
+        ComputeShader = CS_MainPass<NUM_THREADS_X, NUM_THREADS_Y>;
+        DispatchSizeX = (BUFFER_WIDTH + NUM_THREADS_X - 1) / NUM_THREADS_X;
+        DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
     }
 
     pass EndPass {

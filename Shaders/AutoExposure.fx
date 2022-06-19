@@ -170,6 +170,7 @@ void CalculateHistogramAverage(uint3 tid : SV_DISPATCHTHREADID) {
 
 float4 PS_Downscale(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBufferLinear, uv);
+    float avgLuminance = tex2D(HistogramAverage, uv).r;
     
     return float4(lerp(col.rgb, 0.5f, col.a), col.a);
 }

@@ -125,7 +125,7 @@ void CalculateHistogramAverage(uint3 tid : SV_DISPATCHTHREADID) {
     }
 
     if (tid.x == 0) {
-        float weightedLogAverage = (HistogramAvgShared[0] / ((float)(WIDTH * HEIGHT) - countForThisBin));
+        float weightedLogAverage = (HistogramAvgShared[0] / max((float)(WIDTH * HEIGHT) - countForThisBin, 1.0f)) - 1.0f;
         float weightedAverageLuminance = exp2(((weightedLogAverage / 254.0f) * LOG_RANGE) + _MinLogLuminance);
         float luminanceLastFrame = tex2Dfetch(HistogramAverage, uint2(0, 0)).r;
         float adaptedLuminance = luminanceLastFrame + (weightedAverageLuminance - luminanceLastFrame) * (1 - exp(-_DeltaTime * _Tau));

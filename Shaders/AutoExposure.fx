@@ -25,8 +25,43 @@ uniform float _Tau <
     ui_tooltip = "Adjust rate at which auto exposure adjusts.";
 > = 5.0f;
 
-uniform float _DeltaTime < source = "frametime"; >;
+uniform float _S1 <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_min = 0.01f; ui_max = 200.0f;
+    ui_label = "Sensitivity Constant 1";
+    ui_type = "drag";
+    ui_tooltip = "Adjust sensor sensitivity.";
+> = 100.0f;
 
+uniform float _S2 <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_min = 0.01f; ui_max = 200.0f;
+    ui_label = "Sensitivity Constant 2";
+    ui_type = "drag";
+    ui_tooltip = "Adjust sensor sensitivity.";
+> = 100.0f;
+
+uniform float _K <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_min = 1.0f; ui_max = 100.0f;
+    ui_label = "Calibration Constant";
+    ui_type = "drag";
+    ui_tooltip = "Adjust reflected-light meter calibration constant.";
+> = 12.5f;
+
+uniform float _q <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_min = 0.01f; ui_max = 10.0f;
+    ui_label = "Lens Attenuation";
+    ui_type = "drag";
+    ui_tooltip = "Adjust lens and vignetting attenuation.";
+> = 0.65f;
+
+uniform float _DeltaTime < source = "frametime"; >;
 
 #define DIVIDE_ROUNDING_UP(n, d) uint(((n) + (d) - 1) / (d))
 #define WIDTH BUFFER_WIDTH / 2
@@ -135,17 +170,18 @@ void CalculateHistogramAverage(uint3 tid : SV_DISPATCHTHREADID) {
 
 float4 PS_Downscale(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBufferLinear, uv);
-    float4 originalCol = tex2D(ReShade::BackBuffer, uv);
-
-    return lerp(col, originalCol, originalCol.a);
+    
+    return float4(lerp(col.rgb, 0.5f, col.a), col.a);
 }
 
 float4 PS_AutoExposure(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float avgLuminance = tex2D(HistogramAverage, uv).r;
 
+    float luminanceScale = (78.0f / (_q * _S1)) * (_S2 / _K) * avgLuminance;
+
     float3 yxy = Common::convertRGB2Yxy(col.rgb);
-    yxy.x /= (9.6 * avgLuminance + 0.0001f);
+    yxy.x /= luminanceScale;
     col.rgb = Common::convertYxy2RGB(yxy);
 
     return float4(col.rgb, col.a);

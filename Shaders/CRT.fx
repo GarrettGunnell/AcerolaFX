@@ -38,7 +38,7 @@ uniform float _BrightnessAdjust <
 
 uniform bool _MaskUI <
     ui_label = "Mask UI";
-    ui_tooltip = "Mask UI from dithering";
+    ui_tooltip = "Mask UI from crt effect";
 > = true;
 
 texture2D CRTTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
@@ -52,6 +52,7 @@ float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     crtUV = crtUV * 0.5f + 0.5f;
 
     float4 col = tex2D(Common::AcerolaBuffer, crtUV);
+    float4 UI = tex2D(ReShade::BackBuffer, crtUV);
 
     float3 output = saturate(col.rgb);
 
@@ -68,7 +69,7 @@ float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
 
     output = saturate(output) * vignette.x * vignette.y;
 
-    return float4(output, col.a);
+    return float4(lerp(output.rgb, UI.rgb, UI.a * _MaskUI), col.a);
 }
 
 technique CRT  <ui_tooltip = "(LDR) Makes the screen look like a CRT television."; >  {

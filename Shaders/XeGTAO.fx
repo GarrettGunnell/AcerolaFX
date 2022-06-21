@@ -2,25 +2,52 @@
 #include "Common.fxh"
 
 uniform float _EffectRadius <
-    ui_min = 0.0f; ui_max = 100.0f;
+    ui_min = 0.01f; ui_max = 100.0f;
     ui_label = "Effect Radius";
     ui_type = "drag";
     ui_tooltip = "Modify radius of sampling.";
 > = 0.5f;
 
 uniform float _RadiusMultiplier <
-    ui_min = 0.0f; ui_max = 5.0f;
+    ui_min = 0.01f; ui_max = 5.0f;
     ui_label = "Radius Multiplier";
     ui_type = "drag";
     ui_tooltip = "Modify sampling radius multiplier.";
 > = 1.457f;
 
 uniform float _EffectFalloffRange <
-    ui_min = 0.0f; ui_max = 5.0f;
+    ui_min = 0.01f; ui_max = 5.0f;
     ui_label = "Falloff Range";
     ui_type = "drag";
     ui_tooltip = "Distant samples contribute less.";
 > = 0.615f;
+
+uniform float _SampleDistributionPower <
+    ui_min = 0.01f; ui_max = 10.0f;
+    ui_label = "Sample Distribution Power";
+    ui_type = "drag";
+    ui_tooltip = "Small crevices more important that big surfaces."; 
+> = 2.0f;
+
+uniform float _ThinOccluderCompensation <
+    ui_min = 0.0f; ui_max = 10.0f;
+    ui_label = "Thin Occluder Compensation";
+    ui_type = "drag";
+> = 0.0f;
+
+uniform float _FinalValuePower <
+    ui_min = 0.01f; ui_max = 5.0f;
+    ui_label = "Final Value Power";
+    ui_type = "drag";
+    ui_tooltip = "Modfy the final ambient occlusion value exponent";
+> = 2.2f;
+
+uniform float _MipSamplingOffset <
+    ui_min = 0.0f; ui_max = 10.0f;
+    ui_label = "Mip Sampling Offset";
+    ui_type = "drag";
+    ui_tooltip = "Trades between performance and quality";
+> = 3.30f;
 
 texture2D OutDepths0Tex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
 sampler2D OutDepths0 { Texture = OutDepths0Tex; };
@@ -222,6 +249,22 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
     viewspaceZ *= 0.99999;
 
     const float3 viewVec = normalize(-center);
+
+    const float effectRadius = _EffectRadius * _RadiusMultiplier;
+    const float sampleDistributionPower = _SampleDistributionPower;
+    const float thinOccluderCompensation = _ThinOccluderCompensation;
+    const float falloffRange = _EffectFalloffRange * effectRadius;
+
+    const float falloffFrom = effectRadius * (1.0f - _EffectFalloffRange);
+
+    const float falloffMul = -1.0f / falloffRange;
+    const float falloffAdd = falloffFrom / falloffRange + 1.0f;
+
+    float visiblity = 0.0f;
+    float3 bentNormal = 0;
+
+
+
 }
 
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 

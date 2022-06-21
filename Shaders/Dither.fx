@@ -86,7 +86,11 @@ float GetBayer8(int x, int y) {
 
 texture2D DitherTex < pooled = true; > { Width = WIDTH; Height = HEIGHT; Format = RGBA16F; }; 
 sampler2D Dither { Texture = DitherTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Common::AcerolaBuffer, uv); }
+float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
+    float4 col = tex2D(Common::AcerolaBuffer, uv);
+    float4 UI = tex2D(ReShade::BackBuffer, uv);
+    return lerp(col, UI, UI.a);
+}
 
 float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Dither, uv);
@@ -106,7 +110,7 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
     output.g = floor((_GreenColorCount - 1.0f) * output.g + 0.5) / (_GreenColorCount - 1.0f);
     output.b = floor((_BlueColorCount - 1.0f) * output.b + 0.5) / (_BlueColorCount - 1.0f);
 
-   return output;
+   return float4(lerp(output.rgb, UI.rgb, UI.a * _MaskUI), UI.a);
 }
 
 technique Dither  <ui_tooltip = "(LDR) Reduces the color palette of the image with ordered dithering."; >  {

@@ -22,7 +22,7 @@ uniform float _Tint <
     ui_tooltip = "Adjust white balance color tint";
 > = 0.0f;
 
-uniform float _Contrast <
+uniform float3 _Contrast <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Contrast";
     ui_type = "drag";
@@ -50,7 +50,7 @@ uniform float _FilterIntensity <
     ui_tooltip = "Adjust the intensity of the color filter";
 > = 1.0f;
 
-uniform float _Saturation <
+uniform float3 _Saturation <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Saturation";
     ui_type = "drag";

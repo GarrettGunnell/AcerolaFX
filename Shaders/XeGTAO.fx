@@ -1,5 +1,6 @@
 #include "ReShade.fxh"
 #include "Common.fxh"
+#include "XeGTAO.fxh"
 
 uniform float _EffectRadius <
     ui_min = 0.01f; ui_max = 100.0f;
@@ -42,46 +43,28 @@ uniform float _FinalValuePower <
     ui_tooltip = "Modfy the final ambient occlusion value exponent";
 > = 2.2f;
 
-uniform float _MipSamplingOffset <
-    ui_min = 0.0f; ui_max = 10.0f;
-    ui_label = "Mip Sampling Offset";
-    ui_type = "drag";
-    ui_tooltip = "Trades between performance and quality";
-> = 3.30f;
 
 texture2D AOTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D AO { Texture = AOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AO, uv).rgba; }
 
-texture2D OutDepths0Tex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
-sampler2D OutDepths0 { Texture = OutDepths0Tex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_OutDepths0 { Texture = OutDepths0Tex; };
-
-texture2D OutDepths1Tex { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R32F; }; 
-sampler2D OutDepths1 { Texture = OutDepths1Tex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_OutDepths1 { Texture = OutDepths1Tex; };
-
-texture2D OutDepths2Tex { Width = BUFFER_WIDTH / 4; Height = BUFFER_HEIGHT / 4; Format = R32F; }; 
-sampler2D OutDepths2 { Texture = OutDepths2Tex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_OutDepths2 { Texture = OutDepths2Tex; };
-
-texture2D OutDepths3Tex { Width = BUFFER_WIDTH / 8; Height = BUFFER_HEIGHT / 8; Format = R32F; }; 
-sampler2D OutDepths3 { Texture = OutDepths3Tex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_OutDepths3 { Texture = OutDepths3Tex; };
-
-texture2D OutDepths4Tex { Width = BUFFER_WIDTH / 16; Height = BUFFER_HEIGHT / 16; Format = R32F; }; 
-sampler2D OutDepths4 { Texture = OutDepths4Tex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_OutDepths4 { Texture = OutDepths4Tex; };
+texture2D OutDepthsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
+sampler2D OutDepths { Texture = OutDepthsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_OutDepths { Texture = OutDepthsTex; };
 
 texture2D OutEdgesTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
 sampler2D OutEdges { Texture = OutEdgesTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_OutEdges { Texture = OutEdgesTex; };
 
+texture2D NoiseTex { Width = 64; Height = 64; Format = RG32F; };
+sampler2D Noise { Texture = NoiseTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_Noise { Texture = NoiseTex; };
+
 texture2D OutWorkingAOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
 sampler2D OutWorkingAO { Texture = OutWorkingAOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_OutWorkingAO { Texture = OutWorkingAOTex; };
 
-texture2D AOOutputTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+texture2D AOOutputTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
 sampler2D AOOutput { Texture = AOOutputTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_AOOutput { Texture = AOOutputTex; };
 
@@ -94,9 +77,6 @@ storage2D s_AOOutput { Texture = AOOutputTex; };
 #else
     #define DENOISE_BLUR (1.2f)
 #endif
-
-#define CLIP_FAR (1000.0f)
-#define CLIP_NEAR (1.0f)
 
 #define NUM_THREADS_X (8)
 #define NUM_THREADS_Y (8)
@@ -135,210 +115,7 @@ float2 SpatioTemporalNoise(uint2 pixCoord, uint temporalIndex) {
     float2 noise;
     uint index = HilbertIndex(pixCoord);
     index += 288 * (temporalIndex % 64);
-    return float2(frac(0.5 + index * float2(0.75487766624669276005, 0.5698402909980532659114)));
-}
-
-float DepthMIPFilter(float depth0, float depth1, float depth2, float depth3) {
-    float maxDepth = max(max(depth0, depth1), max(depth2, depth3));
-
-    const float depthRangeScaleFactor = 0.75f;
-    const float effectRadius = depthRangeScaleFactor * _EffectRadius * _RadiusMultiplier;
-    const float falloffRange = _EffectFalloffRange * effectRadius;
-    const float falloffFrom = effectRadius * (1.0f - _EffectFalloffRange);
-    const float falloffMul = -1.0f / falloffRange;
-    const float falloffAdd = falloffFrom / falloffRange + 1.0f;
-
-    float weight0 = saturate((maxDepth - depth0) * falloffMul + falloffAdd);
-    float weight1 = saturate((maxDepth - depth1) * falloffMul + falloffAdd);
-    float weight2 = saturate((maxDepth - depth2) * falloffMul + falloffAdd);
-    float weight3 = saturate((maxDepth - depth3) * falloffMul + falloffAdd);
-
-    float weightSum = weight0 + weight1 + weight2 + weight3;
-    return (weight0 * depth0 + weight1 * depth1 + weight2 * depth2 + weight3 * depth3) / weightSum;
-}
-
-float3x3 RotFromToMatrix(float3 from, float3 to) {
-    const float e = dot(from, to);
-    const float f = abs(e);
-
-    const float3 v = cross(from, to);
-    const float h = (1.0)/(1.0 + e);
-    const float hvx = h * v.x;
-    const float hvz = h * v.z;
-    const float hvxy = hvx * v.y;
-    const float hvxz = hvx * v.z;
-    const float hvyz = hvz * v.y;
-
-    float3x3 mtx;
-    mtx[0][0] = e + hvx * v.x;
-    mtx[0][1] = hvxy - v.z;
-    mtx[0][2] = hvxz + v.y;
-
-    mtx[1][0] = hvxy + v.z;
-    mtx[1][1] = e + h * v.y * v.y;
-    mtx[1][2] = hvyz - v.x;
-
-    mtx[2][0] = hvxz - v.y;
-    mtx[2][1] = hvyz + v.x;
-    mtx[2][2] = e + hvz * v.z;
-
-    return mtx;
-}
-
-float ScreenSpaceToViewSpaceDepth(float depth) {
-    float depthLinearizeMul = (CLIP_FAR * CLIP_NEAR) / (CLIP_FAR - CLIP_NEAR);
-    float depthLinearizeAdd = CLIP_FAR / (CLIP_FAR - CLIP_NEAR);
-
-    if (depthLinearizeMul * depthLinearizeAdd < 0)
-        depthLinearizeAdd = -depthLinearizeAdd;
-
-    return depthLinearizeMul / (depthLinearizeAdd - depth);
-}
-
-float ClampDepth(float depth) {
-    return clamp(depth, 0.0, 3.402823466e+38);
-}
-
-groupshared float g_scratchDepths[64];
-void CS_PrefilterDepths(uint3 tid : SV_DISPATCHTHREADID, uint3 gtid : SV_GROUPTHREADID) {
-    // MIP 0
-    const uint2 baseCoord = tid.xy;
-    const uint2 pixCoord = baseCoord * 2;
-    const float2 viewportPixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    float4 depths4 = tex2DgatherR(ReShade::DepthBuffer, float2(pixCoord * viewportPixelSize), int2(1, 1));
-
-    float depth0 = ClampDepth(ScreenSpaceToViewSpaceDepth(depths4.w));
-    float depth1 = ClampDepth(ScreenSpaceToViewSpaceDepth(depths4.z));
-    float depth2 = ClampDepth(ScreenSpaceToViewSpaceDepth(depths4.x));
-    float depth3 = ClampDepth(ScreenSpaceToViewSpaceDepth(depths4.y));
-
-    tex2Dstore(s_OutDepths0, pixCoord + uint2(0, 0), depth0);
-    tex2Dstore(s_OutDepths0, pixCoord + uint2(1, 0), depth1);
-    tex2Dstore(s_OutDepths0, pixCoord + uint2(0, 1), depth2);
-    tex2Dstore(s_OutDepths0, pixCoord + uint2(1, 1), depth3);
-
-    // MIP 1
-    float dm1 = DepthMIPFilter(depth0, depth1, depth2, depth3);
-    tex2Dstore(s_OutDepths1, baseCoord, dm1);
-    g_scratchDepths[gtid.x + gtid.y * 8] = dm1;
-
-    barrier();
-
-    // MIP 2
-    [branch]
-    if (all((gtid.xy % 2) == 0)) {
-        float inTL = g_scratchDepths[(gtid.x + 0) + (gtid.y + 0) * 8];
-        float inTR = g_scratchDepths[(gtid.x + 1) + (gtid.y + 0) * 8];
-        float inBL = g_scratchDepths[(gtid.x + 0) + (gtid.y + 1) * 8];
-        float inBR = g_scratchDepths[(gtid.x + 1) + (gtid.y + 1) * 8];
-
-        float dm2 = DepthMIPFilter(inTL, inTR, inBL, inBR);
-        tex2Dstore(s_OutDepths2, baseCoord / 2, dm2);
-        g_scratchDepths[gtid.x + gtid.y * 8] = dm2;
-    }
-
-    barrier();
-
-    // MIP 3
-    [branch]
-    if (all((gtid.xy % 4) == 0)) {
-        float inTL = g_scratchDepths[(gtid.x + 0) + (gtid.y + 0) * 8];
-        float inTR = g_scratchDepths[(gtid.x + 2) + (gtid.y + 0) * 8];
-        float inBL = g_scratchDepths[(gtid.x + 0) + (gtid.y + 2) * 8];
-        float inBR = g_scratchDepths[(gtid.x + 2) + (gtid.y + 2) * 8];
-
-        float dm3 = DepthMIPFilter(inTL, inTR, inBL, inBR);
-        tex2Dstore(s_OutDepths3, baseCoord / 4, dm3);
-        g_scratchDepths[gtid.x + gtid.y * 8] = dm3;
-    }
-
-    barrier();
-    
-    // MIP 4
-    [branch]
-    if (all((gtid.xy % 8) == 0)) {
-        float inTL = g_scratchDepths[(gtid.x + 0) + (gtid.y + 0) * 8];
-        float inTR = g_scratchDepths[(gtid.x + 4) + (gtid.y + 0) * 8];
-        float inBL = g_scratchDepths[(gtid.x + 0) + (gtid.y + 4) * 8];
-        float inBR = g_scratchDepths[(gtid.x + 4) + (gtid.y + 4) * 8];
-
-        float dm4 = DepthMIPFilter(inTL, inTR, inBL, inBR);
-        tex2Dstore(s_OutDepths4, baseCoord / 8, dm4);
-    }
-}
-
-float4 CalculateEdges(const float centerZ, const float leftZ, const float rightZ, const float topZ, const float bottomZ) {
-    float4 edgesLRTB = float4(leftZ, rightZ, topZ, bottomZ) - centerZ;
-
-    float slopeLR = (edgesLRTB.y - edgesLRTB.x) * 0.5f;
-    float slopeTB = (edgesLRTB.w - edgesLRTB.z) * 0.5f;
-    float4 edgesLRTBSlopeAdjusted = edgesLRTB + float4(slopeLR, -slopeLR, slopeTB, -slopeTB);
-    edgesLRTB = min(abs(edgesLRTB), abs(edgesLRTBSlopeAdjusted));
-
-    return float4(saturate((1.25 - edgesLRTB / (centerZ * 0.011))));
-}
-
-float4 PackEdges(float4 edges) {
-    edges = round( saturate( edges ) * 2.9 );
-    return dot( edges, float4( 64.0 / 255.0, 16.0 / 255.0, 4.0 / 255.0, 1.0 / 255.0 ) ) ;
-}
-
-float3 ComputeViewspacePosition(const float2 screenPos, const float viewspaceDepth) {
-    float3 pos;
-
-    pos.xy = screenPos.xy * viewspaceDepth;
-    pos.z = viewspaceDepth;
-
-    return pos;
-}
-
-float4 R8G8B8A8_UNORM_to_FLOAT4(uint packedInput)
-{
-    float4 unpackedOutput;
-    unpackedOutput.x = (packedInput & 0x000000ff) / 255.0f;
-    unpackedOutput.y = (((packedInput >> 8) & 0x000000ff)) / 255.0f;
-    unpackedOutput.z = (((packedInput >> 16) & 0x000000ff)) / 255.0f;
-    unpackedOutput.w = (packedInput >> 24) / 255.0f;
-    return unpackedOutput;
-}
-
-void DecodeVisibilityBentNormal(const uint packedValue, out float visibility, out float3 bentNormal) {
-    float4 decoded = R8G8B8A8_UNORM_to_FLOAT4(packedValue);
-    bentNormal = decoded.xyz * 2.0f - 1.0f;
-    visibility = decoded.w;
-}
-
-uint FLOAT4_to_R8G8B8A8_UNORM(float4 unpackedInput)
-{
-    return ((uint(saturate(unpackedInput.x) * 255.0f + 0.5f)) |
-            (uint(saturate(unpackedInput.y) * 255.0f + 0.5f) << 8) |
-            (uint(saturate(unpackedInput.z) * 255.0f + 0.5f) << 16) |
-            (uint(saturate(unpackedInput.w) * 255.0f + 0.5f) << 24));
-}
-
-uint EncodeVisibilityBentNormal(float visibility, float3 bentNormal) {
-    return FLOAT4_to_R8G8B8A8_UNORM(float4(bentNormal * 0.5f + 0.5f, visibility));
-}
-
-void OutputWorkingTerm(uint2 pixCoord, float visibility, float3 bentNormal) {
-    visibility = saturate(visibility / 1.5f);
-    tex2Dstore(s_OutWorkingAO, pixCoord, EncodeVisibilityBentNormal(visibility, bentNormal));
-}
-
-float3 CalculateNormal(float4 edgesLRTB, float3 pixCenterPos, float3 pixLPos, float3 pixRPos, float3 pixTPos, float3 pixBPos) {
-    float4 acceptedNormals  = saturate(float4(edgesLRTB.x * edgesLRTB.z, edgesLRTB.z * edgesLRTB.y, edgesLRTB.y * edgesLRTB.w, edgesLRTB.w * edgesLRTB.x) + 0.01);
-
-    pixLPos = normalize(pixLPos - pixCenterPos);
-    pixRPos = normalize(pixRPos - pixCenterPos);
-    pixTPos = normalize(pixTPos - pixCenterPos);
-    pixBPos = normalize(pixBPos - pixCenterPos);
-
-    float3 pixelNormal =  acceptedNormals.x * cross(pixLPos, pixTPos) +
-                          acceptedNormals.y * cross(pixTPos, pixRPos) +
-                          acceptedNormals.z * cross(pixRPos, pixBPos) +
-                          acceptedNormals.w * cross(pixBPos, pixLPos);
-    
-    return normalize(pixelNormal);
+    return float2(frac(0.5f + index * float2(0.75487766624669276005f, 0.5698402909980532659114f)));
 }
 
 float FastSqrt(float x) {
@@ -352,12 +129,20 @@ float FastACos(float inX) {
     return (inX >= 0) ? res : PI - res; 
 }
 
+void CS_CalculateNoise(uint3 tid : SV_DISPATCHTHREADID) {
+    tex2Dstore(s_Noise, tid.xy, float4(SpatioTemporalNoise(tid.xy, 0), 0.0f, 1.0f));
+}
+
+void CS_PrefilterDepths(uint3 tid : SV_DISPATCHTHREADID) {
+    tex2Dstore(s_OutDepths, tid.xy, XeGTAO::ClampDepth(XeGTAO::ScreenSpaceToViewSpaceDepth(tex2Dfetch(ReShade::DepthBuffer, tid.xy).r)));
+}
+
 void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
     const float2 viewportPixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 normalizedScreenPos = (tid.xy + 0.5f) * viewportPixelSize;
 
-    float4 valuesUL = tex2DgatherR(OutDepths0, float2(tid.xy * viewportPixelSize));
-    float4 valuesBR = tex2DgatherR(OutDepths0, float2(tid.xy * viewportPixelSize), int2(1, 1));
+    float4 valuesUL = tex2DgatherR(OutDepths, float2(tid.xy * viewportPixelSize));
+    float4 valuesBR = tex2DgatherR(OutDepths, float2(tid.xy * viewportPixelSize), int2(1, 1));
 
     float viewspaceZ = valuesUL.y;
 
@@ -366,18 +151,26 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
     float pixRZ = valuesUL.z;
     float pixBZ = valuesUL.x;
     
-    float4 edgesLRTB = CalculateEdges(viewspaceZ, pixLZ, pixRZ, pixTZ, pixBZ);
-    tex2Dstore(s_OutEdges, tid.xy, PackEdges(edgesLRTB));
+    float4 edgesLRTB = XeGTAO::CalculateEdges(viewspaceZ, pixLZ, pixRZ, pixTZ, pixBZ);
+    tex2Dstore(s_OutEdges, tid.xy, XeGTAO::PackEdges(edgesLRTB));
 
-    float3 center = ComputeViewspacePosition(normalizedScreenPos, viewspaceZ);
-    float3 left   = ComputeViewspacePosition(normalizedScreenPos + float2(-1,  0) * viewportPixelSize, pixLZ);
-    float3 right  = ComputeViewspacePosition(normalizedScreenPos + float2( 1,  0) * viewportPixelSize, pixRZ);
-    float3 top    = ComputeViewspacePosition(normalizedScreenPos + float2( 0, -1) * viewportPixelSize, pixTZ);
-    float3 bottom = ComputeViewspacePosition(normalizedScreenPos + float2( 0,  1) * viewportPixelSize, pixBZ);
-    
-    float3 viewspaceNormal = CalculateNormal(edgesLRTB, center, left, right, top, bottom);
-    //tex2Dstore(s_OutEdges, tid.xy, float4(viewspaceNormal, 1.0f));
-    viewspaceZ *= 0.99999;
+    float height = 1.0f;
+    float width = height * (BUFFER_WIDTH / BUFFER_HEIGHT);
+
+    float2 CameraTanHalfFOV = float2(height, width);
+
+    float2 NDCToViewMul = float2(CameraTanHalfFOV.x * 2.0f, CameraTanHalfFOV.y * -2.0f);
+    float2 NDCToViewAdd = float2(CameraTanHalfFOV.x * -1.0f, CameraTanHalfFOV.y * 1.0f);
+    float4 NDCToView = float4(NDCToViewMul, NDCToViewAdd);
+
+    float3 center = XeGTAO::ComputeViewspacePosition(normalizedScreenPos, viewspaceZ, NDCToView);
+    float3 left   = XeGTAO::ComputeViewspacePosition(normalizedScreenPos + float2(-1,  0) * viewportPixelSize, pixLZ, NDCToView);
+    float3 right  = XeGTAO::ComputeViewspacePosition(normalizedScreenPos + float2( 1,  0) * viewportPixelSize, pixRZ, NDCToView);
+    float3 top    = XeGTAO::ComputeViewspacePosition(normalizedScreenPos + float2( 0, -1) * viewportPixelSize, pixTZ, NDCToView);
+    float3 bottom = XeGTAO::ComputeViewspacePosition(normalizedScreenPos + float2( 0,  1) * viewportPixelSize, pixBZ, NDCToView);
+    float3 viewspaceNormal = XeGTAO::CalculateNormal(edgesLRTB, center, left, right, top, bottom);
+
+    viewspaceZ *= 0.99920;
 
     const float3 viewVec = normalize(-center);
 
@@ -392,15 +185,15 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
     const float falloffAdd = falloffFrom / falloffRange + 1.0f;
 
     float visibility = 0.0f;
-    float3 bentNormal = 0;
+    float3 bentNormal = viewspaceNormal;
 
-    float2 localNoise = SpatioTemporalNoise(tid.xy, 0);
+    float2 localNoise = tex2Dfetch(Noise, tid.xy).rg;
 
     const float noiseSlice = localNoise.x;
     const float noiseSample = localNoise.y;
 
     const float pixelTooCloseThreshold = 1.3f;
-    const float2 pixelDirRBViewspaceSizeAtCenterZ = viewspaceZ * viewportPixelSize;
+    const float2 pixelDirRBViewspaceSizeAtCenterZ = viewspaceZ * float2(NDCToView.x * viewportPixelSize.x, NDCToView.y * viewportPixelSize.y);
     float screenspaceRadius = effectRadius / pixelDirRBViewspaceSizeAtCenterZ.x;
     
     visibility += saturate((10.0f - screenspaceRadius) / 100.0f) * 0.5f;
@@ -452,16 +245,16 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
             float2 sampleOffset = s * omega;
             float sampleOffsetLength = length(sampleOffset);
 
-            float mipLevel = (float)clamp(log2(sampleOffsetLength) - _MipSamplingOffset, 0, 5);
+            float mipLevel = (float)clamp(log2(sampleOffsetLength) - 1, 0, 5);
             sampleOffset = round(sampleOffset) * viewportPixelSize;
 
             float2 sampleScreenPos0 = normalizedScreenPos + sampleOffset;
-            float SZ0 = tex2Dfetch(OutDepths0, sampleScreenPos0 * float2(BUFFER_WIDTH, BUFFER_HEIGHT)).r;
-            float3 samplePos0 = ComputeViewspacePosition(sampleScreenPos0, SZ0);
+            float SZ0 = tex2Dfetch(OutDepths, sampleScreenPos0 * float2(BUFFER_WIDTH, BUFFER_HEIGHT)).r;
+            float3 samplePos0 = XeGTAO::ComputeViewspacePosition(sampleScreenPos0, SZ0, NDCToView);
 
             float2 sampleScreenPos1 = normalizedScreenPos - sampleOffset;
-            float SZ1 = tex2Dfetch(OutDepths0, sampleScreenPos1 * float2(BUFFER_WIDTH, BUFFER_HEIGHT)).r;
-            float3 samplePos1 = ComputeViewspacePosition(sampleScreenPos1, SZ1);
+            float SZ1 = tex2Dfetch(OutDepths, sampleScreenPos1 * float2(BUFFER_WIDTH, BUFFER_HEIGHT)).r;
+            float3 samplePos1 = XeGTAO::ComputeViewspacePosition(sampleScreenPos1, SZ1, NDCToView);
 
             float3 sampleDelta0 = (samplePos0 - float3(center));
             float3 sampleDelta1 = (samplePos1 - float3(center));
@@ -486,7 +279,7 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
             horizonCos1 = max(horizonCos1, shc1);
         }
 
-        projectedNormalVecLength = lerp(projectedNormalVecLength, 1.0f, 0.5f);
+        projectedNormalVecLength = lerp(projectedNormalVecLength, 1.0f, 0.05f);
 
         float h0 = -FastACos(horizonCos1);
         float h1 = FastACos(horizonCos0);
@@ -495,38 +288,14 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
         float iarc1 = (cosNorm + 2.0f * h1 * sin(n) - cos(2.0f * h1 - n)) / 4.0f;
         float localVisibility = projectedNormalVecLength * (iarc0 + iarc1);
         visibility += localVisibility;
-
-        // Compute Bent Normal
-        float t0 = (6*sin(h0-n)-sin(3*h0-n)+6*sin(h1-n)-sin(3*h1-n)+16*sin(n)-3*(sin(h0+n)+sin(h1+n)))/12;
-        float t1 = (-cos(3 * h0-n)-cos(3 * h1-n) +8 * cos(n)-3 * (cos(h0+n) +cos(h1+n)))/12;
-        float3 localBentNormal = float3(directionVec.x * t0, directionVec.y * t0, -t1);
-        localBentNormal = mul(RotFromToMatrix(float3(0, 0, -1), viewVec), localBentNormal) * projectedNormalVecLength;
-        bentNormal += localBentNormal;
     }
 
     visibility /= sliceCount;
-    visibility = pow(visibility, _FinalValuePower);
+    visibility = pow(abs(visibility), _FinalValuePower);
     visibility = max(0.03, visibility);
-    bentNormal = normalize(bentNormal);
 
-    OutputWorkingTerm(tid.xy, visibility, bentNormal);
-}
-
-float4 UnpackEdges(float _packedVal) {
-    uint packedVal = (uint)(_packedVal * 255.5);
-    float4 edgesLRTB;
-    edgesLRTB.x = (float)((packedVal >> 6) & 0x03) / 3.0;
-    edgesLRTB.y = (float)((packedVal >> 4) & 0x03) / 3.0;
-    edgesLRTB.z = (float)((packedVal >> 2) & 0x03) / 3.0;
-    edgesLRTB.w = (float)((packedVal >> 0) & 0x03) / 3.0;
-
-    return saturate(edgesLRTB);
-}
-
-void DecodeGatherPartial(const uint4 packedValue, out float4 outDecoded[4]) {
-    for (int i = 0; i < 4; ++i) {
-        DecodeVisibilityBentNormal(packedValue[i], outDecoded[i].w, outDecoded[i].xyz);
-    }
+    visibility = saturate(visibility / 1.5f);
+    tex2Dstore(s_OutWorkingAO, tid.xy, visibility * 255.0f + 0.5f);
 }
 
 void AddSample(float4 ssaoValue, float edgeValue, inout float4 sum, inout float sumWeight) {
@@ -536,10 +305,10 @@ void AddSample(float4 ssaoValue, float edgeValue, inout float4 sum, inout float 
     sumWeight += weight;
 }
 
-void AO_Output(uint2 pixCoord, float4 outputValue, bool finalApply) {
-    float visibility = outputValue.w * ((finalApply) ? (1.5f) : (1));
-    float3 bentNormal = normalize(outputValue.xyz);
-    tex2Dstore(s_AOOutput, pixCoord, float4(bentNormal, visibility));
+void AO_Output(uint2 pixCoord, float outputValue, bool finalApply) {
+    float visibility = outputValue * ((finalApply) ? (1.5f) : (1));
+
+    tex2Dstore(s_AOOutput, pixCoord, visibility * 255.0f + 0.5f);
 }
 
 void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
@@ -551,7 +320,7 @@ void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
     const float blurAmount = (finalApply) ? DENOISE_BLUR : (DENOISE_BLUR / 5.0f);
     const float diagWeight = 0.85f * 0.5f;
 
-    float4 aoTerm[2];
+    float aoTerm[2];
     float4 edgesC_LRTB[2];
     float weightTL[2];
     float weightTR[2];
@@ -564,21 +333,21 @@ void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
     float4 edgesQ1 = tex2DgatherR(OutEdges, gatherCenter, int2(2, 0));
     float4 edgesQ2 = tex2DgatherR(OutEdges, gatherCenter, int2(1, 2));
 
-    float4 visQ0[4]; DecodeGatherPartial(tex2DgatherR(OutWorkingAO, gatherCenter, int2(0, 0)), visQ0);
-    float4 visQ1[4]; DecodeGatherPartial(tex2DgatherR(OutWorkingAO, gatherCenter, int2(2, 0)), visQ1);
-    float4 visQ2[4]; DecodeGatherPartial(tex2DgatherR(OutWorkingAO, gatherCenter, int2(0, 2)), visQ2);
-    float4 visQ3[4]; DecodeGatherPartial(tex2DgatherR(OutWorkingAO, gatherCenter, int2(2, 2)), visQ3);
+    float visQ0[4]; XeGTAO::DecodeGatherPartial(tex2DgatherR(OutWorkingAO, gatherCenter, int2(0, 0)), visQ0);
+    float visQ1[4]; XeGTAO::DecodeGatherPartial(tex2DgatherR(OutWorkingAO, gatherCenter, int2(2, 0)), visQ1);
+    float visQ2[4]; XeGTAO::DecodeGatherPartial(tex2DgatherR(OutWorkingAO, gatherCenter, int2(0, 2)), visQ2);
+    float visQ3[4]; XeGTAO::DecodeGatherPartial(tex2DgatherR(OutWorkingAO, gatherCenter, int2(2, 2)), visQ3);
 
     [unroll]
     for (int side = 0; side < 2; ++side) {
         const int2 pixCoord = int2(pixCoordBase.x + side, pixCoordBase.y);
 
-        float4 edgesL_LRTB = UnpackEdges((side == 0) ? (edgesQ0.x) : (edgesQ0.y));
-        float4 edgesT_LRTB = UnpackEdges((side == 0) ? (edgesQ0.z) : (edgesQ1.w));
-        float4 edgesR_LRTB = UnpackEdges((side == 0) ? (edgesQ1.x) : (edgesQ1.y));
-        float4 edgesB_LRTB = UnpackEdges((side == 0) ? (edgesQ2.w) : (edgesQ2.z));
+        float4 edgesL_LRTB = XeGTAO::UnpackEdges((side == 0) ? (edgesQ0.x) : (edgesQ0.y));
+        float4 edgesT_LRTB = XeGTAO::UnpackEdges((side == 0) ? (edgesQ0.z) : (edgesQ1.w));
+        float4 edgesR_LRTB = XeGTAO::UnpackEdges((side == 0) ? (edgesQ1.x) : (edgesQ1.y));
+        float4 edgesB_LRTB = XeGTAO::UnpackEdges((side == 0) ? (edgesQ2.w) : (edgesQ2.z));
 
-        edgesC_LRTB[side] = UnpackEdges((side == 0) ? (edgesQ0.y) : (edgesQ1.x));
+        edgesC_LRTB[side] = XeGTAO::UnpackEdges((side == 0) ? (edgesQ0.y) : (edgesQ1.x));
         edgesC_LRTB[side] *= float4(edgesL_LRTB.y, edgesR_LRTB.x, edgesT_LRTB.w, edgesB_LRTB.z);
         
         const float leak_threshold = 2.5; 
@@ -593,18 +362,18 @@ void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
         weightBR[side] = diagWeight * (edgesC_LRTB[side].y * edgesR_LRTB.w + edgesC_LRTB[side].w * edgesB_LRTB.y);
 
         // first pass
-        float4 ssaoValue     = (side == 0) ? (visQ0[1]) : (visQ1[0]);
-        float4 ssaoValueL    = (side == 0) ? (visQ0[0]) : (visQ0[1]);
-        float4 ssaoValueT    = (side == 0) ? (visQ0[2]) : (visQ1[3]);
-        float4 ssaoValueR    = (side == 0) ? (visQ1[0]) : (visQ1[1]);
-        float4 ssaoValueB    = (side == 0) ? (visQ2[2]) : (visQ3[3]);
-        float4 ssaoValueTL   = (side == 0) ? (visQ0[3]) : (visQ0[2]);
-        float4 ssaoValueBR   = (side == 0) ? (visQ3[3]) : (visQ3[2]);
-        float4 ssaoValueTR   = (side == 0) ? (visQ1[3]) : (visQ1[2]);
-        float4 ssaoValueBL   = (side == 0) ? (visQ2[3]) : (visQ2[2]);
+        float ssaoValue     = (side == 0) ? (visQ0[1]) : (visQ1[0]);
+        float ssaoValueL    = (side == 0) ? (visQ0[0]) : (visQ0[1]);
+        float ssaoValueT    = (side == 0) ? (visQ0[2]) : (visQ1[3]);
+        float ssaoValueR    = (side == 0) ? (visQ1[0]) : (visQ1[1]);
+        float ssaoValueB    = (side == 0) ? (visQ2[2]) : (visQ3[3]);
+        float ssaoValueTL   = (side == 0) ? (visQ0[3]) : (visQ0[2]);
+        float ssaoValueBR   = (side == 0) ? (visQ3[3]) : (visQ3[2]);
+        float ssaoValueTR   = (side == 0) ? (visQ1[3]) : (visQ1[2]);
+        float ssaoValueBL   = (side == 0) ? (visQ2[3]) : (visQ2[2]);
 
         float sumWeight = blurAmount;
-        float4 sum = ssaoValue * sumWeight;
+        float sum = ssaoValue * sumWeight;
 
         AddSample(ssaoValueL, edgesC_LRTB[side].x, sum, sumWeight);
         AddSample(ssaoValueR, edgesC_LRTB[side].y, sum, sumWeight);
@@ -624,16 +393,31 @@ void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
 
 float4 PS_ApplyAO(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float visibility = tex2D(AOOutput, uv).w;
+    float visibility = tex2D(AOOutput, uv).r / 255.0f;
 
-    return float4(col.rgb * saturate(visibility), col.a);
+    float3 a =  2.0404 * col.rgb - 0.3324;
+    float3 b = -4.7951 * col.rgb + 0.6417;
+    float3 c =  2.7552 * col.rgb + 0.6903;
+
+    float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
+
+    return float4(col.rgb * output, col.a);
+}
+
+technique SetupSSAO < hidden = true; enabled = true; timeout = 1; > {
+    pass CalculateNoise {
+        ComputeShader = CS_CalculateNoise<8, 8>;
+        DispatchSizeX = 8;
+        DispatchSizeY = 8;
+    }
 }
 
 technique SSAO {
+
     pass PrefilterDepths {
-        ComputeShader = CS_PrefilterDepths<8, 8>;
-        DispatchSizeX = (BUFFER_WIDTH + 15) / 16;
-        DispatchSizeY = (BUFFER_HEIGHT + 15) / 16;
+        ComputeShader = CS_PrefilterDepths<NUM_THREADS_X, NUM_THREADS_Y>;
+        DispatchSizeX = (BUFFER_WIDTH + NUM_THREADS_X - 1) / NUM_THREADS_X;
+        DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
     }
 
     pass MainPass {

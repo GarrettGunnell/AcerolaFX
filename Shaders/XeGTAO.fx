@@ -43,6 +43,17 @@ uniform float _FinalValuePower <
     ui_tooltip = "Modfy the final ambient occlusion value exponent";
 > = 2.2f;
 
+#ifndef SLICE_COUNT
+    #define SLICE_COUNT 9
+#endif
+
+#ifndef STEPS_PER_SLICE
+    #define STEPS_PER_SLICE 3
+#endif
+
+#ifndef USING_TAA
+    #define USING_TAA 0
+#endif
 
 texture2D AOTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D AO { Texture = AOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -56,7 +67,7 @@ texture2D OutEdgesTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R
 sampler2D OutEdges { Texture = OutEdgesTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_OutEdges { Texture = OutEdgesTex; };
 
-texture2D NoiseTex { Width = 64; Height = 64; Format = RG32F; };
+texture2D NoiseTex { Width = 64; Height = 64; Format = R8; };
 sampler2D Noise { Texture = NoiseTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_Noise { Texture = NoiseTex; };
 
@@ -69,7 +80,7 @@ sampler2D AOOutput { Texture = AOOutputTex; MagFilter = POINT; MinFilter = POINT
 storage2D s_AOOutput { Texture = AOOutputTex; };
 
 #ifndef DENOISE_PASSES
-    #define DENOISE_PASSES (0)
+    #define DENOISE_PASSES 0
 #endif
 
 #if DENOISE_PASSES == 0
@@ -111,12 +122,23 @@ uint HilbertIndex(uint2 pos) {
     return index;
 }
 
+#if USING_TAA != 0
+uniform int framecount < source = "framecount"; >;
+#else
+uniform int framecount < hidden = true; > = 0;
+#endif
+
+uint GenerateNoise(uint2 pixCoord) {
+    return HilbertIndex(pixCoord);
+}
+
 float2 SpatioTemporalNoise(uint2 pixCoord, uint temporalIndex) {
     float2 noise;
-    uint index = HilbertIndex(pixCoord);
+    uint index = tex2Dfetch(Noise, pixCoord).r;
     index += 288 * (temporalIndex % 64);
     return float2(frac(0.5f + index * float2(0.75487766624669276005f, 0.5698402909980532659114f)));
 }
+
 
 float FastSqrt(float x) {
     return (float)(asfloat(0x1fbd1df5 + (asint(x) >> 1))); 
@@ -130,7 +152,7 @@ float FastACos(float inX) {
 }
 
 void CS_CalculateNoise(uint3 tid : SV_DISPATCHTHREADID) {
-    tex2Dstore(s_Noise, tid.xy, float4(SpatioTemporalNoise(tid.xy, 0), 0.0f, 1.0f));
+    tex2Dstore(s_Noise, tid.xy, GenerateNoise(tid.xy));
 }
 
 void CS_PrefilterDepths(uint3 tid : SV_DISPATCHTHREADID) {
@@ -187,7 +209,7 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
     float visibility = 0.0f;
     float3 bentNormal = viewspaceNormal;
 
-    float2 localNoise = tex2Dfetch(Noise, tid.xy).rg;
+    float2 localNoise = SpatioTemporalNoise(tid.xy, (uint)framecount % 64);
 
     const float noiseSlice = localNoise.x;
     const float noiseSample = localNoise.y;
@@ -200,11 +222,11 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
 
     const float minS = pixelTooCloseThreshold / screenspaceRadius;
 
-    const int sliceCount = 9;
-    const int stepsPerSlice = 3;
+    const float sliceCount = (float)SLICE_COUNT;
+    const float stepsPerSlice = (float)STEPS_PER_SLICE;
 
     [unroll]
-    for (int slice = 0; slice < sliceCount; ++slice) {
+    for (float slice = 0; slice < sliceCount; ++slice) {
         float sliceK = (slice + noiseSlice) / sliceCount;
         
         float phi = sliceK * PI;

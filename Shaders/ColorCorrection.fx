@@ -42,13 +42,13 @@ uniform float3 _Contrast <
     ui_tooltip = "Adjust contrast";
 > = 1.0f;
 
-uniform float _LinearMidPoint <
+uniform float3 _LinearMidPoint <
     ui_category = "Color Correct";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Linear Mid Point";
     ui_type = "drag";
-    ui_tooltip = "Adjust the midpoint value between black and white for contrast.";
+    ui_tooltip = "Adjust the midpoint value between black and fully saturated for contrast.";
 > = 0.5f;
 
 uniform float3 _Brightness <

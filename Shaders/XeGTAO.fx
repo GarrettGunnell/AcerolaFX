@@ -49,6 +49,21 @@ uniform float _FinalValuePower <
     ui_tooltip = "Modify the final ambient occlusion value exponent";
 > = 2.2f;
 
+uniform float _SigmaD <
+    ui_min = 0.01f; ui_max = 5.0f;
+    ui_label = "SigmaD";
+    ui_type = "drag";
+    ui_tooltip = "Modify the final ambient occlusion value exponent";
+> = 1.0f;
+
+uniform float _SigmaR <
+    ui_min = 0.01f; ui_max = 5.0f;
+    ui_label = "SigmaR";
+    ui_type = "drag";
+    ui_tooltip = "Modify the final ambient occlusion value exponent";
+> = 1.0f;
+
+
 #ifndef SLICE_COUNT
     #define SLICE_COUNT 9
 #endif
@@ -83,6 +98,10 @@ storage2D s_OutWorkingAO { Texture = OutWorkingAOTex; };
 texture2D AOOutputTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
 sampler2D AOOutput { Texture = AOOutputTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_AOOutput { Texture = AOOutputTex; };
+
+texture2D FilteredAOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
+sampler2D FilteredAO { Texture = FilteredAOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_FilteredAO { Texture = FilteredAOTex; };
 
 #ifndef DENOISE_PASSES
     #define DENOISE_PASSES 0
@@ -425,27 +444,8 @@ void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
 
 float4 PS_ApplyAO(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float visibility = tex2D(AOOutput, uv).r / 255.0f;
+    float visibility = tex2D(FilteredAO, uv).r / 255.0f;
 
-    float visibilitySum = 0.0f;
-
-    int kernelSize = 3;
-
-    int upper = ((kernelSize - 1) / 2);
-    int lower = -upper;
-
-    [unroll]
-    for (int x = lower; x <= upper; ++x) {
-        [unroll]
-        for (int y = lower; y <= upper; ++y) {
-            float2 offset = (x * BUFFER_RCP_WIDTH, y * BUFFER_RCP_HEIGHT);
-            visibilitySum += tex2D(AOOutput, uv + offset).r / 255.0f;
-        }
-    }
-
-    visibilitySum /= kernelSize * kernelSize;
-
-    //visibility = visibilitySum;
 
     float3 a =  2.0404 * col.rgb - 0.3324;
     float3 b = -4.7951 * col.rgb + 0.6417;
@@ -455,6 +455,44 @@ float4 PS_ApplyAO(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
     //return visibility;
     return float4(col.rgb * output, col.a);
+}
+
+float gaussR(float sigma, float dist)
+{
+	return exp(-(dist*dist)/(2.0*sigma*sigma));
+}
+
+float  gaussD(float sigma, int x, int y)
+{
+	return exp(-((x*x+y*y)/(2.0f*sigma*sigma)));
+}
+
+void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
+    int kernelRadius = (int)ceil(2.0f * _SigmaD);
+
+    float sum = 0.0f;
+    float sumWeight = 0.0f;
+
+    float intCenter = tex2Dfetch(AOOutput, tid.xy).r / 255.0f;
+
+        for (int m = tid.x - kernelRadius; m <= tid.x + kernelRadius; ++m) {
+            for (int n = tid.y - kernelRadius; n <= tid.y + kernelRadius; ++n) {
+                if (m >= 0 && n >= 0 && m < BUFFER_WIDTH && n < BUFFER_HEIGHT) {
+                    uint2 pos = uint2(m, n);
+
+                    float intKerPos = tex2Dfetch(AOOutput, pos).r / 255.0f;
+                    float weight = gaussD(_SigmaD, m - tid.x, n - tid.y) * gaussR(_SigmaR, intKerPos - intCenter);
+
+                    sumWeight += weight;
+                    sum += weight * intKerPos;
+                }
+            }
+        }
+
+
+    if (sumWeight > 0) {
+        tex2Dstore(s_FilteredAO, tid.xy, (sum / sumWeight) * 255.0f);
+    }
 }
 
 technique SetupSSAO < hidden = true; enabled = true; timeout = 1; > {
@@ -482,6 +520,12 @@ technique SSAO {
     pass Denoise {
         ComputeShader = CS_Denoise<NUM_THREADS_X, NUM_THREADS_Y>;
         DispatchSizeX = (BUFFER_WIDTH + (NUM_THREADS_X * 2) - 1) / (NUM_THREADS_X * 2);
+        DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
+    }
+
+    pass BilateralFilter {
+        ComputeShader = CS_BilateralFilter<NUM_THREADS_X, NUM_THREADS_Y>;
+        DispatchSizeX = (BUFFER_WIDTH + NUM_THREADS_X - 1) / NUM_THREADS_X;
         DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
     }
 

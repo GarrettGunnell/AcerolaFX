@@ -4,7 +4,7 @@ uniform float _Gamma <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Gamma";
     ui_type = "drag";
-    ui_tooltip = "Adjust gamma correction";
+    ui_tooltip = "Adjust gamma correction.";
 > = 1.0f;
 
 texture2D GammaTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 

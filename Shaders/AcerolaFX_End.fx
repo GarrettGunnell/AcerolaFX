@@ -2,7 +2,7 @@
 
 uniform bool _MaskUI <
     ui_label = "Mask UI";
-    ui_tooltip = "Mask UI (disable if dithering/crt effects are enabled)";
+    ui_tooltip = "Mask UI (disable if dithering/crt effects are enabled).";
 > = true;
 
 float4 PS_End(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

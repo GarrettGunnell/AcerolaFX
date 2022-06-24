@@ -5,14 +5,14 @@ uniform float _MinLogLuminance <
     ui_min = -20.0f; ui_max = 20.0f;
     ui_label = "Min Log Luminance";
     ui_type = "drag";
-    ui_tooltip = "Adjust the minimum log luminance.";
+    ui_tooltip = "Adjust the minimum log luminance allowed.";
 > = -5.0f;
 
 uniform float _MaxLogLuminance <
     ui_min = -20.0f; ui_max = 20.0f;
     ui_label = "Max Log Luminance";
     ui_type = "drag";
-    ui_tooltip = "Adjust the maximum log luminance.";
+    ui_tooltip = "Adjust the maximum log luminance allowed.";
 > = -2.5f;
 
 uniform float _Tau <
@@ -30,7 +30,7 @@ uniform float _S1 <
     ui_min = 0.01f; ui_max = 200.0f;
     ui_label = "Sensitivity Constant 1";
     ui_type = "drag";
-    ui_tooltip = "Adjust sensor sensitivity.";
+    ui_tooltip = "Adjust sensor sensitivity ratio 1.";
 > = 100.0f;
 
 uniform float _S2 <
@@ -39,7 +39,7 @@ uniform float _S2 <
     ui_min = 0.01f; ui_max = 200.0f;
     ui_label = "Sensitivity Constant 2";
     ui_type = "drag";
-    ui_tooltip = "Adjust sensor sensitivity.";
+    ui_tooltip = "Adjust sensor sensitivity ratio 2.";
 > = 100.0f;
 
 uniform float _K <

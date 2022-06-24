@@ -4,7 +4,7 @@ uniform float _Sharpness <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Sharpness";
     ui_type = "drag";
-    ui_tooltip = "Adjust sharpening";
+    ui_tooltip = "Adjust sharpening strength.";
 > = 1.0f;
 
 uniform float _SharpnessFalloff <
@@ -13,7 +13,7 @@ uniform float _SharpnessFalloff <
     ui_min = 0.0f; ui_max = 0.01f;
     ui_label = "Sharpness Falloff";
     ui_type = "slider";
-    ui_tooltip = "Adjust rate at which sharpness falls off at a distance";
+    ui_tooltip = "Adjust rate at which sharpness falls off at a distance.";
 > = 0.0f;
 
 uniform float _Offset <
@@ -22,7 +22,7 @@ uniform float _Offset <
     ui_min = 0.0f; ui_max = 1000.0f;
     ui_label = "Falloff Offset";
     ui_type = "slider";
-    ui_tooltip = "Offset distance at which sharpness starts to falloff";
+    ui_tooltip = "Offset distance at which sharpness starts to falloff..";
 > = 0.0f;
 
 float3 Sample(float2 uv, float deltaX, float deltaY) {

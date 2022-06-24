@@ -86,7 +86,7 @@ uniform bool _DebugHDR <
     ui_category_closed = true;
     ui_category = "Advanced settings";
     ui_label = "Debug HDR";
-    ui_tooltip = "Check to see which colors are in high dynamic range (aka rgb clamped)";
+    ui_tooltip = "Check to see which colors are in high dynamic range (aka rgb clamped).";
 > = false;
 
 static const float3x3 ACESInputMat = float3x3(

@@ -42,6 +42,7 @@ uniform float _ThinOccluderCompensation <
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Thin Occluder Compensation";
+    ui_tooltip = "Adjust how much the samples account for thin objects.";
     ui_type = "drag";
 > = 0.0f;
 
@@ -50,6 +51,7 @@ uniform float _SlopeCompensation <
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Slope Compensation";
+    ui_tooltip = "Slopes get darkened for some reason sometimes so this compensates if it's bad.";
     ui_type = "drag";
 > = 0.05f;
 
@@ -59,7 +61,7 @@ uniform float _FinalValuePower <
     ui_min = 0.01f; ui_max = 5.0f;
     ui_label = "Final Value Power";
     ui_type = "drag";
-    ui_tooltip = "Modify the final ambient occlusion value exponent";
+    ui_tooltip = "Modify the final ambient occlusion value exponent.";
 > = 2.2f;
 
 uniform float _SigmaD <

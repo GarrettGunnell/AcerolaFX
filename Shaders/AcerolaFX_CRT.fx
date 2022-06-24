@@ -18,7 +18,7 @@ uniform int _LineSize <
     ui_min = 0; ui_max = 4;
     ui_label = "Line Size";
     ui_type = "slider";
-    ui_tooltip = "Adjust width of CRT lines by 2 ^ x";
+    ui_tooltip = "Adjust width of CRT lines by 2 ^ x.";
 > = 0;
 
 uniform float _LineStrength <
@@ -37,7 +37,7 @@ uniform float _BrightnessAdjust <
 
 uniform bool _MaskUI <
     ui_label = "Mask UI";
-    ui_tooltip = "Mask UI from crt effect";
+    ui_tooltip = "Mask UI from crt effect.";
 > = true;
 
 texture2D CRTTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 

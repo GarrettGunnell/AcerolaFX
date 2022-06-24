@@ -3,6 +3,7 @@
 uniform int _BlendMode <
     ui_type = "combo";
     ui_label = "Blend Mode";
+    ui_tooltip = "Photoshop blend mode to use";
     ui_items = "No Blend\0"
                "Add\0"
                "Multiply\0"
@@ -13,7 +14,7 @@ uniform int _BlendMode <
                "Color Dodge\0"
                "Color Burn\0"
                "Vivid Light\0"
-               "Acerola Secret Sauce\0";
+               "Acerola Light\0";
 > = 0;
 
 uniform float3 _BlendColor <
@@ -25,19 +26,19 @@ uniform float3 _BlendColor <
 
 uniform bool _ColorBlend <
     ui_label = "Use Color";
-    ui_tooltip = "Use color defined above to blend instead of the render";
+    ui_tooltip = "Use color defined above to blend instead of the render.";
 > = false;
 
 uniform float _Strength <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Blend Strength";
     ui_type = "slider";
-    ui_tooltip = "Adjust how strong the blending is";
+    ui_tooltip = "Adjust how strong the blending is.";
 > = 0.0f;
 
 uniform bool _SampleSky <
     ui_label = "Blend Sky";
-    ui_tooltip = "Include sky in blend";
+    ui_tooltip = "Include sky in blend.";
 > = true;
 
 texture2D BlendTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 

@@ -41,7 +41,7 @@ uniform int _BayerLevel <
 
 uniform bool _MaskUI <
     ui_label = "Mask UI";
-    ui_tooltip = "Mask UI from dithering";
+    ui_tooltip = "Mask UI from dithering.";
 > = true;
 
 static const int bayer2[2 * 2] = {

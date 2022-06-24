@@ -11,7 +11,7 @@ uniform float _Exposure <
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Exposure";
     ui_type = "drag";
-    ui_tooltip = "Adjust camera exposure";
+    ui_tooltip = "Adjust camera exposure.";
 > = 1.0f;
 
 uniform float _Temperature <
@@ -20,7 +20,7 @@ uniform float _Temperature <
     ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Temperature";
     ui_type = "drag";
-    ui_tooltip = "Adjust white balancing temperature";
+    ui_tooltip = "Adjust white balancing temperature.";
 > = 0.0f;
 
 uniform float _Tint <
@@ -29,7 +29,7 @@ uniform float _Tint <
     ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Tint";
     ui_type = "drag";
-    ui_tooltip = "Adjust white balance color tint";
+    ui_tooltip = "Adjust white balance color tint.";
 > = 0.0f;
 
 uniform float3 _Contrast <
@@ -38,7 +38,7 @@ uniform float3 _Contrast <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Contrast";
     ui_type = "drag";
-    ui_tooltip = "Adjust contrast";
+    ui_tooltip = "Adjust contrast.";
 > = 1.0f;
 
 uniform float3 _LinearMidPoint <
@@ -56,7 +56,7 @@ uniform float3 _Brightness <
     ui_min = -5.0f; ui_max = 5.0f;
     ui_label = "Brightness";
     ui_type = "drag";
-    ui_tooltip = "Adjust brightness of each color channel";
+    ui_tooltip = "Adjust brightness of each color channel.";
 > = float3(0.0, 0.0, 0.0);
 
 uniform float3 _ColorFilter <
@@ -65,7 +65,7 @@ uniform float3 _ColorFilter <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Color Filter";
     ui_type = "color";
-    ui_tooltip = "Set color filter (white for no change)";
+    ui_tooltip = "Set color filter (white for no change).";
 > = float3(1.0, 1.0, 1.0);
 
 uniform float _FilterIntensity <
@@ -74,7 +74,7 @@ uniform float _FilterIntensity <
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Color Filter Intensity (HDR)";
     ui_type = "drag";
-    ui_tooltip = "Adjust the intensity of the color filter";
+    ui_tooltip = "Adjust the intensity of the color filter.";
 > = 1.0f;
 
 uniform float3 _Saturation <
@@ -83,7 +83,7 @@ uniform float3 _Saturation <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Saturation";
     ui_type = "drag";
-    ui_tooltip = "Adjust saturation";
+    ui_tooltip = "Adjust saturation.";
 > = 1.0f;
 
 texture2D ColorCorrectionTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 

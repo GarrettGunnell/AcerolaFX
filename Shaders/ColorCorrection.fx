@@ -42,6 +42,15 @@ uniform float3 _Contrast <
     ui_tooltip = "Adjust contrast";
 > = 1.0f;
 
+uniform float _LinearMidPoint <
+    ui_category = "Color Correct";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Linear Mid Point";
+    ui_type = "drag";
+    ui_tooltip = "Adjust the midpoint value between black and white for contrast.";
+> = 0.5f;
+
 uniform float3 _Brightness <
     ui_category = "Color Correct";
     ui_category_closed = true;
@@ -97,7 +106,7 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     output = Common::WhiteBalance(output.rgb, _Temperature, _Tint);
     output = _HDR ? max(0.0f, output) : saturate(output);
 
-    output = _Contrast * (output - 0.5f) + 0.5f + _Brightness;
+    output = _Contrast * (output - _LinearMidPoint) + _LinearMidPoint + _Brightness;
     output = _HDR ? max(0.0f, output) : saturate(output);
 
     output *= (_ColorFilter * _FilterIntensity);
@@ -111,7 +120,7 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     return float4(output, col.a);
 }
 
-technique ColorCorrection  <ui_tooltip = "(HDR) A suite of color correction effects."; >  {
+technique ColorCorrection  <ui_tooltip = "(HDR/LDR) A suite of color correction effects."; >  {
     pass ColorCorrect {
         RenderTarget = ColorCorrectionTex;
 

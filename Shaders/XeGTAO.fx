@@ -504,7 +504,11 @@ void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
 
     float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
 
-    tex2Dstore(s_AO, tid.xy, float4(col.rgb * output, col.a));
+    #if DEBUG_SSAO == 1
+        tex2Dstore(s_AO, tid.xy, visibility);
+    #else
+        tex2Dstore(s_AO, tid.xy, float4(col.rgb * output, col.a));
+    #endif
 }
 
 technique SetupSSAO < hidden = true; enabled = true; timeout = 1; > {

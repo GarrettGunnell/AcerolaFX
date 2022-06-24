@@ -3,6 +3,8 @@
 #include "XeGTAO.fxh"
 
 uniform float _EffectRadius <
+    ui_category = "SSAO Settings";
+    ui_category_closed = true;
     ui_min = 0.01f; ui_max = 100.0f;
     ui_label = "Effect Radius";
     ui_type = "drag";
@@ -10,6 +12,8 @@ uniform float _EffectRadius <
 > = 0.5f;
 
 uniform float _RadiusMultiplier <
+    ui_category = "SSAO Settings";
+    ui_category_closed = true;
     ui_min = 0.01f; ui_max = 5.0f;
     ui_label = "Radius Multiplier";
     ui_type = "drag";
@@ -17,6 +21,8 @@ uniform float _RadiusMultiplier <
 > = 1.457f;
 
 uniform float _EffectFalloffRange <
+    ui_category = "SSAO Settings";
+    ui_category_closed = true;
     ui_min = 0.01f; ui_max = 5.0f;
     ui_label = "Falloff Range";
     ui_type = "drag";
@@ -24,6 +30,8 @@ uniform float _EffectFalloffRange <
 > = 0.615f;
 
 uniform float _SampleDistributionPower <
+    ui_category = "SSAO Settings";
+    ui_category_closed = true;
     ui_min = 0.01f; ui_max = 10.0f;
     ui_label = "Sample Distribution Power";
     ui_type = "drag";
@@ -31,18 +39,24 @@ uniform float _SampleDistributionPower <
 > = 2.0f;
 
 uniform float _ThinOccluderCompensation <
+    ui_category = "SSAO Settings";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Thin Occluder Compensation";
     ui_type = "drag";
 > = 0.0f;
 
 uniform float _SlopeCompensation <
+    ui_category = "SSAO Settings";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Slope Compensation";
     ui_type = "drag";
 > = 0.05f;
 
 uniform float _FinalValuePower <
+    ui_category = "SSAO Settings";
+    ui_category_closed = true;
     ui_min = 0.01f; ui_max = 5.0f;
     ui_label = "Final Value Power";
     ui_type = "drag";
@@ -50,34 +64,40 @@ uniform float _FinalValuePower <
 > = 2.2f;
 
 uniform float _SigmaD <
-    ui_min = 0.01f; ui_max = 5.0f;
+    ui_category = "Blur Settings";
+    ui_category_closed = true;
+    ui_min = 0.01f; ui_max = 3.0f;
     ui_label = "SigmaD";
     ui_type = "drag";
-    ui_tooltip = "Modify the final ambient occlusion value exponent";
+    ui_tooltip = "Modify the distance of bilateral filter samples (if you set this too high it will crash the game probably so I have taken that power away from you).";
 > = 1.0f;
 
 uniform float _SigmaR <
+    ui_category = "Blur Settings";
+    ui_category_closed = true;
     ui_min = 0.01f; ui_max = 5.0f;
     ui_label = "SigmaR";
     ui_type = "drag";
-    ui_tooltip = "Modify the final ambient occlusion value exponent";
+    ui_tooltip = "Modify the blur range, higher values approach a normal gaussian blur.";
 > = 1.0f;
 
 
 #ifndef SLICE_COUNT
-    #define SLICE_COUNT 9
+    #define SLICE_COUNT 3
 #endif
 
 #ifndef STEPS_PER_SLICE
     #define STEPS_PER_SLICE 3
 #endif
 
-#ifndef USING_TAA
-    #define USING_TAA 0
+#ifndef DEBUG_SSAO
+    #define DEBUG_SSAO 0
 #endif
 
-texture2D AOTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+texture2D AOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D AO { Texture = AOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_AO { Texture = AOTex; };
+float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AO, uv); }
 
 texture2D OutDepthsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
 sampler2D OutDepths { Texture = OutDepthsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -99,19 +119,8 @@ texture2D AOOutputTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R
 sampler2D AOOutput { Texture = AOOutputTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_AOOutput { Texture = AOOutputTex; };
 
-texture2D FilteredAOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
-sampler2D FilteredAO { Texture = FilteredAOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_FilteredAO { Texture = FilteredAOTex; };
 
-#ifndef DENOISE_PASSES
-    #define DENOISE_PASSES 0
-#endif
-
-#if DENOISE_PASSES == 0
-    #define DENOISE_BLUR (1e4f)
-#else
-    #define DENOISE_BLUR (1.2f)
-#endif
+#define DENOISE_BLUR (1e4f)
 
 #define NUM_THREADS_X (8)
 #define NUM_THREADS_Y (8)
@@ -145,12 +154,6 @@ uint HilbertIndex(uint2 pos) {
 
     return index;
 }
-
-#if USING_TAA != 0
-uniform int framecount < source = "framecount"; >;
-#else
-uniform int framecount < hidden = true; > = 0;
-#endif
 
 uint GenerateNoise(uint2 pixCoord) {
     return HilbertIndex(pixCoord);
@@ -235,7 +238,7 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
     float visibility = 0.0f;
     float3 bentNormal = viewspaceNormal;
 
-    float2 localNoise = SpatioTemporalNoise(tid.xy, (uint)framecount % 64);
+    float2 localNoise = SpatioTemporalNoise(tid.xy, 0);
 
     const float noiseSlice = localNoise.x;
     const float noiseSample = localNoise.y;
@@ -358,10 +361,6 @@ void AO_Output(uint2 pixCoord, float outputValue, bool finalApply) {
     tex2Dstore(s_AOOutput, pixCoord, visibility * 255.0f + 0.5f);
 }
 
-float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return tex2D(AO, uv);
-}
-
 void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
     const float2 viewportPixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     const uint2 pixCoordBase = tid * uint2(2, 1);
@@ -444,8 +443,10 @@ void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
 
 float4 PS_ApplyAO(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float visibility = tex2D(FilteredAO, uv).r / 255.0f;
+    float visibility = tex2D(OutWorkingAO, uv).r / 255.0f;
 
+    float3 normal = ReShade::GetScreenSpaceNormal(uv);
+    visibility = lerp(visibility, 1.0f, normal.y * normal.y * normal.y);
 
     float3 a =  2.0404 * col.rgb - 0.3324;
     float3 b = -4.7951 * col.rgb + 0.6417;
@@ -453,46 +454,57 @@ float4 PS_ApplyAO(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
     float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
 
-    //return visibility;
-    return float4(col.rgb * output, col.a);
+    #if DEBUG_SSAO == 1
+        return visibility;
+    #else
+        return float4(col.rgb * output, col.a);
+    #endif
 }
 
-float gaussR(float sigma, float dist)
-{
-	return exp(-(dist*dist)/(2.0*sigma*sigma));
+float gaussR(float sigma, float dist) {
+	return exp(-(dist * dist) / (2.0 * sigma * sigma));
 }
 
-float  gaussD(float sigma, int x, int y)
-{
-	return exp(-((x*x+y*y)/(2.0f*sigma*sigma)));
+float  gaussD(float sigma, int x, int y) {
+	return exp(-((x * x + y * y) / (2.0f * sigma * sigma)));
 }
 
 void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
+    // Filter
     int kernelRadius = (int)ceil(2.0f * _SigmaD);
 
     float sum = 0.0f;
     float sumWeight = 0.0f;
 
-    float intCenter = tex2Dfetch(AOOutput, tid.xy).r / 255.0f;
+    float center = tex2Dfetch(AOOutput, tid.xy).r / 255.0f;
 
-        for (int m = tid.x - kernelRadius; m <= tid.x + kernelRadius; ++m) {
-            for (int n = tid.y - kernelRadius; n <= tid.y + kernelRadius; ++n) {
-                if (m >= 0 && n >= 0 && m < BUFFER_WIDTH && n < BUFFER_HEIGHT) {
-                    uint2 pos = uint2(m, n);
+    for (int x = tid.x - kernelRadius; x <= tid.x + kernelRadius; ++x) {
+        for (int y = tid.y - kernelRadius; y <= tid.y + kernelRadius; ++y) {
+            if(x < BUFFER_WIDTH && y < BUFFER_HEIGHT) {
+                uint2 pos = uint2(x, y);
 
-                    float intKerPos = tex2Dfetch(AOOutput, pos).r / 255.0f;
-                    float weight = gaussD(_SigmaD, m - tid.x, n - tid.y) * gaussR(_SigmaR, intKerPos - intCenter);
+                float intKerPos = tex2Dfetch(AOOutput, pos).r / 255.0f;
+                float weight = gaussD(_SigmaD, x - tid.x, y - tid.y) * gaussR(_SigmaR, intKerPos - center);
 
-                    sumWeight += weight;
-                    sum += weight * intKerPos;
-                }
+                sumWeight += weight;
+                sum += weight * intKerPos;
             }
         }
-
-
-    if (sumWeight > 0) {
-        tex2Dstore(s_FilteredAO, tid.xy, (sum / sumWeight) * 255.0f);
     }
+
+    float visibility = sumWeight > 0 ? sum / sumWeight : center;
+    float4 col = tex2Dfetch(Common::AcerolaBuffer, tid.xy);
+
+    float3 normal = ReShade::GetScreenSpaceNormal(tid.xy * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT));
+    visibility = lerp(visibility, 1.0f, normal.y * normal.y * normal.y);
+
+    float3 a =  2.0404 * col.rgb - 0.3324;
+    float3 b = -4.7951 * col.rgb + 0.6417;
+    float3 c =  2.7552 * col.rgb + 0.6903;
+
+    float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
+
+    tex2Dstore(s_AO, tid.xy, float4(col.rgb * output, col.a));
 }
 
 technique SetupSSAO < hidden = true; enabled = true; timeout = 1; > {
@@ -527,13 +539,6 @@ technique SSAO {
         ComputeShader = CS_BilateralFilter<NUM_THREADS_X, NUM_THREADS_Y>;
         DispatchSizeX = (BUFFER_WIDTH + NUM_THREADS_X - 1) / NUM_THREADS_X;
         DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
-    }
-
-    pass ApplyAO {
-        RenderTarget = AOTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_ApplyAO;
     }
 
     pass EndPass {

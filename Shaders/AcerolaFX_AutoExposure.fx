@@ -1,6 +1,5 @@
-#include "ReShade.fxh"
-#include "Common.fxh"
-#include "Downscales.fxh"
+#include "AcerolaFX_Common.fxh"
+#include "AcerolaFX_Downscales.fxh"
 
 uniform float _MinLogLuminance <
     ui_min = -20.0f; ui_max = 20.0f;

@@ -1,5 +1,4 @@
-#include "ReShade.fxh"
-#include "Common.fxh"
+#include "AcerolaFX_Common.fxh"
 
 uniform float _Sharpness <
     ui_min = 0.0f; ui_max = 1.0f;
@@ -92,7 +91,7 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
     return float4(output, col.a);
 }
 
-technique AdaptiveSharpness <ui_tooltip = "(LDR)(HIGH PERFORMANCE COST) Adaptively increases the contrast between edges to create the illusion of high detail."; > {
+technique AdaptiveSharpness <ui_tooltip = "(LDR) Adaptively increases the contrast between edges to create the illusion of high detail."; > {
     pass Sharpen {
         RenderTarget = AdaptiveSharpnessTex;
 

@@ -1,5 +1,4 @@
-#include "ReShade.fxh"
-#include "Common.fxh"
+#include "AcerolaFX_Common.fxh"
 
 uniform float3 _FogColor <
     ui_min = 0.0f; ui_max = 1.0f;

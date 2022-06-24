@@ -1,5 +1,4 @@
-#include "Reshade.fxh"
-#include "Common.fxh"
+#include "AcerolaFX_Common.fxh"
 
 uniform float _Curvature <
     ui_min = 1.0f; ui_max = 10.0f;

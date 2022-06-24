@@ -1,5 +1,4 @@
-#include "ReShade.fxh"
-#include "Common.fxh"
+#include "AcerolaFX_Common.fxh"
 
 #ifndef DOWNSCALE_FACTOR
     #define DOWNSCALE_FACTOR 1

@@ -1,6 +1,5 @@
-#include "ReShade.fxh"
-#include "Common.fxh"
-#include "XeGTAO.fxh"
+#include "AcerolaFX_Common.fxh"
+#include "AcerolaFX_XeGTAO.fxh"
 
 uniform float _EffectRadius <
     ui_category = "SSAO Settings";
@@ -471,28 +470,29 @@ float  gaussD(float sigma, int x, int y) {
 
 void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
     // Filter
-    int kernelRadius = (int)ceil(2.0f * _SigmaD);
+    const int kernelRadius = (int)ceil(2.0f * _SigmaD);
 
     float sum = 0.0f;
     float sumWeight = 0.0f;
 
     float center = tex2Dfetch(AOOutput, tid.xy).r / 255.0f;
 
-    for (int x = tid.x - kernelRadius; x <= tid.x + kernelRadius; ++x) {
-        for (int y = tid.y - kernelRadius; y <= tid.y + kernelRadius; ++y) {
-            if(x < BUFFER_WIDTH && y < BUFFER_HEIGHT) {
-                uint2 pos = uint2(x, y);
+    int upper = ((kernelRadius - 1) * 0.5f);
+    int lower = -upper;
 
-                float intKerPos = tex2Dfetch(AOOutput, pos).r / 255.0f;
-                float weight = gaussD(_SigmaD, x - tid.x, y - tid.y) * gaussR(_SigmaR, intKerPos - center);
+    for (int x = lower; x <= upper; ++x) {
+        for(int y = lower; y <= upper; ++y) {
+            int2 offset = int2(x, y);
 
-                sumWeight += weight;
-                sum += weight * intKerPos;
-            }
+            float intKerPos = tex2Dfetch(AOOutput, tid.xy + offset).r / 255.0f;
+            float weight = gaussD(_SigmaD, (tid.x + x) - tid.x, (tid.y + y) - tid.y) * gaussR(_SigmaR, intKerPos - center);
+
+            sumWeight += weight;
+            sum += weight * intKerPos;
         }
     }
 
-    float visibility = sumWeight > 0 ? sum / sumWeight : center;
+    float visibility = sumWeight > 0 ? sum / (sumWeight + 0.001f) : center;
     float4 col = tex2Dfetch(Common::AcerolaBuffer, tid.xy);
 
     float3 normal = ReShade::GetScreenSpaceNormal(tid.xy * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT));
@@ -519,7 +519,7 @@ technique SetupSSAO < hidden = true; enabled = true; timeout = 1; > {
     }
 }
 
-technique SSAO {
+technique XeGTAO < ui_tooltip = "(LDR) Approximate ground truth ambient occlusion for better lighting."; > {
 
     pass PrefilterDepths {
         ComputeShader = CS_PrefilterDepths<NUM_THREADS_X, NUM_THREADS_Y>;

@@ -1,5 +1,4 @@
-#include "ReShade.fxh"
-#include "Common.fxh"
+#include "AcerolaFX_Common.fxh"
 
 uniform bool _HDR <
     ui_label = "HDR";

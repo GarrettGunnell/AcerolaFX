@@ -1,6 +1,5 @@
-#include "ReShade.fxh"
-#include "Common.fxh"
-#include "Downscales.fxh"
+#include "AcerolaFX_Common.fxh"
+#include "AcerolaFX_Downscales.fxh"
 
 #ifndef SAMPLE_SKY
     #define SAMPLE_SKY 0

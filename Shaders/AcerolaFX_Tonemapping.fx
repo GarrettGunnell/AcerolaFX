@@ -1,5 +1,4 @@
-#include "ReShade.fxh"
-#include "Common.fxh"
+#include "AcerolaFX_Common.fxh"
 
 uniform int _Tonemapper <
     ui_type = "combo";
@@ -164,6 +163,7 @@ float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
         output = ReinhardExtended(output);
     else if (_Tonemapper == 4)
         output = Hable(output);
+
 
     output = saturate(output);
 

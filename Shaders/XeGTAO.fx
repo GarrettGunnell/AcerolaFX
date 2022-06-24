@@ -36,11 +36,17 @@ uniform float _ThinOccluderCompensation <
     ui_type = "drag";
 > = 0.0f;
 
+uniform float _SlopeCompensation <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Slope Compensation";
+    ui_type = "drag";
+> = 0.05f;
+
 uniform float _FinalValuePower <
     ui_min = 0.01f; ui_max = 5.0f;
     ui_label = "Final Value Power";
     ui_type = "drag";
-    ui_tooltip = "Modfy the final ambient occlusion value exponent";
+    ui_tooltip = "Modify the final ambient occlusion value exponent";
 > = 2.2f;
 
 #ifndef SLICE_COUNT
@@ -57,7 +63,6 @@ uniform float _FinalValuePower <
 
 texture2D AOTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D AO { Texture = AOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AO, uv).rgba; }
 
 texture2D OutDepthsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
 sampler2D OutDepths { Texture = OutDepthsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -192,9 +197,11 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
     float3 bottom = XeGTAO::ComputeViewspacePosition(normalizedScreenPos + float2( 0,  1) * viewportPixelSize, pixBZ, NDCToView);
     float3 viewspaceNormal = XeGTAO::CalculateNormal(edgesLRTB, center, left, right, top, bottom);
 
-    viewspaceZ *= 0.99920;
+    viewspaceZ *= 0.99999;
 
     const float3 viewVec = normalize(-center);
+
+    viewspaceNormal = normalize(viewspaceNormal + max(0, -dot(viewspaceNormal, viewVec)) * viewVec);
 
     const float effectRadius = _EffectRadius * _RadiusMultiplier;
     const float sampleDistributionPower = _SampleDistributionPower;
@@ -214,8 +221,8 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
     const float noiseSlice = localNoise.x;
     const float noiseSample = localNoise.y;
 
-    const float pixelTooCloseThreshold = 1.3f;
-    const float2 pixelDirRBViewspaceSizeAtCenterZ = viewspaceZ * float2(NDCToView.x * viewportPixelSize.x, NDCToView.y * viewportPixelSize.y);
+    const float pixelTooCloseThreshold = 1.0f;
+    const float2 pixelDirRBViewspaceSizeAtCenterZ = (NDCToView.xy * viewportPixelSize.xy) * viewspaceZ;
     float screenspaceRadius = effectRadius / pixelDirRBViewspaceSizeAtCenterZ.x;
     
     visibility += saturate((10.0f - screenspaceRadius) / 100.0f) * 0.5f;
@@ -267,7 +274,6 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
             float2 sampleOffset = s * omega;
             float sampleOffsetLength = length(sampleOffset);
 
-            float mipLevel = (float)clamp(log2(sampleOffsetLength) - 1, 0, 5);
             sampleOffset = round(sampleOffset) * viewportPixelSize;
 
             float2 sampleScreenPos0 = normalizedScreenPos + sampleOffset;
@@ -301,7 +307,7 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
             horizonCos1 = max(horizonCos1, shc1);
         }
 
-        projectedNormalVecLength = lerp(projectedNormalVecLength, 1.0f, 0.05f);
+        projectedNormalVecLength = lerp(projectedNormalVecLength, 1.0f, _SlopeCompensation);
 
         float h0 = -FastACos(horizonCos1);
         float h1 = FastACos(horizonCos0);
@@ -331,6 +337,10 @@ void AO_Output(uint2 pixCoord, float outputValue, bool finalApply) {
     float visibility = outputValue * ((finalApply) ? (1.5f) : (1));
 
     tex2Dstore(s_AOOutput, pixCoord, visibility * 255.0f + 0.5f);
+}
+
+float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    return tex2D(AO, uv);
 }
 
 void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
@@ -417,12 +427,33 @@ float4 PS_ApplyAO(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float visibility = tex2D(AOOutput, uv).r / 255.0f;
 
+    float visibilitySum = 0.0f;
+
+    int kernelSize = 3;
+
+    int upper = ((kernelSize - 1) / 2);
+    int lower = -upper;
+
+    [unroll]
+    for (int x = lower; x <= upper; ++x) {
+        [unroll]
+        for (int y = lower; y <= upper; ++y) {
+            float2 offset = (x * BUFFER_RCP_WIDTH, y * BUFFER_RCP_HEIGHT);
+            visibilitySum += tex2D(AOOutput, uv + offset).r / 255.0f;
+        }
+    }
+
+    visibilitySum /= kernelSize * kernelSize;
+
+    //visibility = visibilitySum;
+
     float3 a =  2.0404 * col.rgb - 0.3324;
     float3 b = -4.7951 * col.rgb + 0.6417;
     float3 c =  2.7552 * col.rgb + 0.6903;
 
     float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
 
+    //return visibility;
     return float4(col.rgb * output, col.a);
 }
 

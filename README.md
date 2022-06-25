@@ -10,6 +10,10 @@ For information on installation and usage please refer to the [wiki](https://git
 ![example2](./Examples/example2.png) <br>
 ![example3](./Examples/example3.png)
 
+### Credits
+
+Big thank you to [Aki Saeri](https://twitter.com/AkiSaeri), the ultimate Final Fantasy XIV gamer, for beta testing the shaders.
+
 References: <br>
 https://github.com/GPUOpen-Effects/FidelityFX-CAS <br>
 https://github.com/LordOfLunacy/Insane-Shaders/blob/master/Shaders/DevShaders/ComputeShaders/HistogramCompute.fx <br>

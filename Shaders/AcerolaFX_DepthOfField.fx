@@ -2,7 +2,7 @@
 #include "AcerolaFX_BokehKernels.fxh"
 
 uniform float _FocusDistance <
-    ui_min = 0.01f; ui_max = 100.0f;
+    ui_min = 0.01f; ui_max = 1.0f;
     ui_label = "Focus Distance";
     ui_type = "slider";
     ui_tooltip = "Adjust focusing plane.";

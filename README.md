@@ -1,3 +1,13 @@
+# AcerolaFX
+
+For information on installation and usage pleae refer to the [wiki](https://github.com/GarrettGunnell/AcerolaFX/wiki).
+
+## Examples
+
+![example1](./Examples/example1.png) <br>
+![example2](./Examples/example2.png) <br>
+![example3](./Examples/example3.png)
+
 References: <br>
 https://github.com/GPUOpen-Effects/FidelityFX-CAS <br>
 https://github.com/LordOfLunacy/Insane-Shaders/blob/master/Shaders/DevShaders/ComputeShaders/HistogramCompute.fx <br>

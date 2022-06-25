@@ -2,7 +2,7 @@
 
 A fully modular and completely customizable post processing pipeline intended for Final Fantasy XIV gameplay and gposing.
 
-For information on installation and usage pleae refer to the [wiki](https://github.com/GarrettGunnell/AcerolaFX/wiki).
+For information on installation and usage please refer to the [wiki](https://github.com/GarrettGunnell/AcerolaFX/wiki).
 
 ## Examples
 

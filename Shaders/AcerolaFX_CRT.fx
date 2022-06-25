@@ -9,7 +9,7 @@ uniform float _Curvature <
 
 uniform float _VignetteWidth <
     ui_min = 1.0f; ui_max = 100.0f;
-    ui_label = "VignetteWidth";
+    ui_label = "Vignette Width";
     ui_type = "drag";
     ui_tooltip = "Adjust width of the vignette.";
 > = 30.0f;

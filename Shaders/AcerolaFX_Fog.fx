@@ -9,7 +9,7 @@ uniform float3 _FogColor <
 
 uniform int _FogMode <
     ui_type = "combo";
-    ui_label = "Fog factor mode.";
+    ui_label = "Fog Factor Mode";
     ui_items = "Exp\0"
                 "Exp2\0";
 > = 1;

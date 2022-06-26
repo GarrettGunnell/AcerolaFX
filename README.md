@@ -4,9 +4,9 @@ A fully modular and completely customizable post processing pipeline intended fo
 
 For information on installation and usage please refer to the [wiki](https://github.com/GarrettGunnell/AcerolaFX/wiki).
 
-For an album of gameplay shader examples please look [here](https://imgsli.com/MTE0MTg3/0/1)!
-
 ## Examples
+
+For an album of gameplay shader comparisons please look [here](https://imgsli.com/MTE0MTg3/0/1)!
 
 ![example1](./Examples/example1.png) <br>
 ![example2](./Examples/example2.png) <br>

@@ -1,12 +1,12 @@
 #include "AcerolaFX_Common.fxh"
 #include "AcerolaFX_Downscales.fxh"
 
-#ifndef SAMPLE_SKY
-    #define SAMPLE_SKY 0
+#ifndef AFX_SAMPLE_SKY
+    #define AFX_SAMPLE_SKY 0
 #endif
 
-#ifndef DEBUG_BLOOM
-    #define DEBUG_BLOOM 0
+#ifndef AFX_DEBUG_BLOOM
+    #define AFX_DEBUG_BLOOM 0
 #endif
 
 uniform float _Threshold <
@@ -156,7 +156,7 @@ float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float UIMask = (tex2D(Common::AcerolaBuffer, uv).a > 0.0f) ? 0.0f : 1.0f;
 
-    #if SAMPLE_SKY
+    #if AFX_SAMPLE_SKY
     bool SkyMask = true;
     #else
     bool SkyMask = ReShade::GetLinearizedDepth(uv) < 0.98f;
@@ -245,7 +245,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
         output = output / max(0.01f, (1.0f - (bloom - 0.001f)));
     }
 
-    #if DEBUG_BLOOM
+    #if AFX_DEBUG_BLOOM
     return float4(bloom, col.a);
     #else
     return float4(output, col.a);

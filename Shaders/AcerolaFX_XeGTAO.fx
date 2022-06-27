@@ -83,16 +83,16 @@ uniform float _SigmaR <
 > = 1.0f;
 
 
-#ifndef SLICE_COUNT
-    #define SLICE_COUNT 3
+#ifndef AFX_SLICE_COUNT
+    #define AFX_SLICE_COUNT 3
 #endif
 
-#ifndef STEPS_PER_SLICE
-    #define STEPS_PER_SLICE 3
+#ifndef AFX_STEPS_PER_SLICE
+    #define AFX_STEPS_PER_SLICE 3
 #endif
 
-#ifndef DEBUG_SSAO
-    #define DEBUG_SSAO 0
+#ifndef AFX_DEBUG_SSAO
+    #define AFX_DEBUG_SSAO 0
 #endif
 
 texture2D AOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
@@ -252,8 +252,8 @@ void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {
 
     const float minS = pixelTooCloseThreshold / screenspaceRadius;
 
-    const float sliceCount = (float)SLICE_COUNT;
-    const float stepsPerSlice = (float)STEPS_PER_SLICE;
+    const float sliceCount = (float)AFX_SLICE_COUNT;
+    const float stepsPerSlice = (float)AFX_STEPS_PER_SLICE;
 
     [unroll]
     for (float slice = 0; slice < sliceCount; ++slice) {
@@ -455,7 +455,7 @@ float4 PS_ApplyAO(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
     float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
 
-    #if DEBUG_SSAO == 1
+    #if AFX_DEBUG_SSAO == 1
         return visibility;
     #else
         return float4(col.rgb * output, col.a);
@@ -506,7 +506,7 @@ void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
 
     float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
 
-    #if DEBUG_SSAO == 1
+    #if AFX_DEBUG_SSAO == 1
         tex2Dstore(s_AO, tid.xy, visibility);
     #else
         tex2Dstore(s_AO, tid.xy, float4(col.rgb * output, col.a));

@@ -1,7 +1,7 @@
 #include "AcerolaFX_Common.fxh"
 
-#ifndef DOWNSCALE_FACTOR
-    #define DOWNSCALE_FACTOR 1
+#ifndef AFX_DOWNSCALE_FACTOR
+    #define AFX_DOWNSCALE_FACTOR 1
 #endif
 
 uniform float _Spread <
@@ -80,10 +80,10 @@ float GetBayer8(int x, int y) {
 }
 
 #define PWRTWO(EXP) (1 << (EXP))
-#define WIDTH BUFFER_WIDTH / PWRTWO(DOWNSCALE_FACTOR)
-#define HEIGHT BUFFER_HEIGHT / PWRTWO(DOWNSCALE_FACTOR)
+#define AFX_WIDTH BUFFER_WIDTH / PWRTWO(AFX_DOWNSCALE_FACTOR)
+#define AFX_HEIGHT BUFFER_HEIGHT / PWRTWO(AFX_DOWNSCALE_FACTOR)
 
-texture2D DitherTex < pooled = true; > { Width = WIDTH; Height = HEIGHT; Format = RGBA16F; }; 
+texture2D DitherTex < pooled = true; > { Width = AFX_WIDTH; Height = AFX_HEIGHT; Format = RGBA16F; }; 
 sampler2D Dither { Texture = DitherTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Common::AcerolaBuffer, uv);
@@ -95,8 +95,8 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
     float4 col = tex2D(Dither, uv);
     float4 UI = tex2D(ReShade::BackBuffer, uv);
 
-    int x = uv.x * WIDTH;
-    int y = uv.y * HEIGHT;
+    int x = uv.x * AFX_WIDTH;
+    int y = uv.y * AFX_HEIGHT;
 
     float bayerValues[3] = { 0, 0, 0 };
     bayerValues[0] = GetBayer2(x, y);

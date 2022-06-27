@@ -1,7 +1,7 @@
 namespace XeGTAO {
 
-#define CLIP_FAR (1000.0f)
-#define CLIP_NEAR (1.0f)
+#define AFX_CLIP_FAR (1000.0f)
+#define AFX_CLIP_NEAR (1.0f)
 
     float3x3 RotFromToMatrix(float3 from, float3 to) {
         const float e = dot(from, to);
@@ -32,8 +32,8 @@ namespace XeGTAO {
     }
 
     float ScreenSpaceToViewSpaceDepth(float depth) {
-        float depthLinearizeMul = (CLIP_FAR * CLIP_NEAR) / (CLIP_FAR - CLIP_NEAR);
-        float depthLinearizeAdd = CLIP_FAR / (CLIP_FAR - CLIP_NEAR);
+        float depthLinearizeMul = (AFX_CLIP_FAR * AFX_CLIP_NEAR) / (AFX_CLIP_FAR - AFX_CLIP_NEAR);
+        float depthLinearizeAdd = AFX_CLIP_FAR / (AFX_CLIP_FAR - AFX_CLIP_NEAR);
 
         if (depthLinearizeMul * depthLinearizeAdd < 0)
             depthLinearizeAdd = -depthLinearizeAdd;

@@ -180,19 +180,19 @@ float4 Scale(float4 pos : SV_POSITION, float2 uv : TEXCOORD, sampler2D buffer, i
     return float4(SampleBox(buffer, uv, texelSize, sampleDelta), 1.0f);
 }
 
-#if NUM_DOWNSCALES > 1
+#if AFX_NUM_DOWNSCALES > 1
 float4 PS_Down1(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Half, 2, _DownSampleDelta); }
-#if NUM_DOWNSCALES > 2
+#if AFX_NUM_DOWNSCALES > 2
 float4 PS_Down2(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Quarter, 4, _DownSampleDelta); }
-#if NUM_DOWNSCALES > 3
+#if AFX_NUM_DOWNSCALES > 3
 float4 PS_Down3(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Eighth, 8, _DownSampleDelta); }
-#if NUM_DOWNSCALES > 4
+#if AFX_NUM_DOWNSCALES > 4
 float4 PS_Down4(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::Sixteenth, 16, _DownSampleDelta); }
-#if NUM_DOWNSCALES > 5
+#if AFX_NUM_DOWNSCALES > 5
 float4 PS_Down5(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::ThirtySecondth, 32, _DownSampleDelta); }
-#if NUM_DOWNSCALES > 6
+#if AFX_NUM_DOWNSCALES > 6
 float4 PS_Down6(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::SixtyFourth, 64, _DownSampleDelta); }
-#if NUM_DOWNSCALES > 7
+#if AFX_NUM_DOWNSCALES > 7
 float4 PS_Down7(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::OneTwentyEighth, 128, _DownSampleDelta); }
 float4 PS_Up1(float4 position : SV_Position, float2 uv : TEXCOORD) : SV_TARGET { return Scale(position, uv, DownScale::TwoFiftySixth, 256, _UpSampleDelta); }
 #endif
@@ -259,43 +259,43 @@ technique AFX_Bloom  <ui_label = "Bloom"; ui_tooltip = "(HDR) Blend the brighter
         PixelShader = PS_Prefilter;
     }
 
-    #if NUM_DOWNSCALES > 1
+    #if AFX_NUM_DOWNSCALES > 1
     pass Down1 {
         RenderTarget = DownScale::QuarterTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down1;
     }
-    #if NUM_DOWNSCALES > 2
+    #if AFX_NUM_DOWNSCALES > 2
     pass Down2 {
         RenderTarget = DownScale::EighthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down2;
     }
-    #if NUM_DOWNSCALES > 3
+    #if AFX_NUM_DOWNSCALES > 3
     pass Down3 {
         RenderTarget = DownScale::SixteenthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down3;
     }
-    #if NUM_DOWNSCALES > 4
+    #if AFX_NUM_DOWNSCALES > 4
     pass Down4 {
         RenderTarget = DownScale::ThirtySecondthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down4;
     }
-    #if NUM_DOWNSCALES > 5
+    #if AFX_NUM_DOWNSCALES > 5
     pass Down5 {
         RenderTarget = DownScale::SixtyFourthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down5;
     }
-    #if NUM_DOWNSCALES > 6
+    #if AFX_NUM_DOWNSCALES > 6
     pass Down6 {
         RenderTarget = DownScale::OneTwentyEighthTex;
         VertexShader = PostProcessVS;
         PixelShader = PS_Down6;
     }
-    #if NUM_DOWNSCALES > 7
+    #if AFX_NUM_DOWNSCALES > 7
     pass Down7 {
         RenderTarget = DownScale::TwoFiftySixthTex;
         VertexShader = PostProcessVS;

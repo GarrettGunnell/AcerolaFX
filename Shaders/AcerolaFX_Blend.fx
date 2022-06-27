@@ -57,26 +57,39 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     }
 
     float3 output = a; 
-    if (_BlendMode == 1)
-        output = a + b;
-    else if (_BlendMode == 2)
-        output = a * b;
-    else if (_BlendMode == 3)
-        output = 1.0f - (1.0f - a) * (1.0f - b);
-    else if (_BlendMode == 4)
-        output = (Common::Luminance(a) < 0.5) ? 2.0f * a * b : 1.0f - 2.0f * (1.0f - a) * (1.0f - b);
-    else if (_BlendMode == 5)
-        output = (Common::Luminance(b) < 0.5) ? 1.0f - 2.0f * (1.0f - a) * (1.0f - b) : 2.0f * a * b;
-    else if (_BlendMode == 6)
-        output = (Common::Luminance(b) < 0.5) ? 2.0f * a * b + (a * a) * (1.0f - 2.0f * b) : 2.0f * a * (1.0f - b) + sqrt(a) * (2.0f * b - 1.0f);
-    else if (_BlendMode == 7)
-        output = a / (1.0f - (b - 0.001f));
-    else if (_BlendMode == 8)
-        output = 1.0f - ((1.0f - a) / (b + 0.001));
-    else if (_BlendMode == 9)
-        output = (Common::Luminance(b) < 0.5) ? 1.0f - ((1.0f - a) / (2.0f * (b + 0.001f))) : a / (2.0f * (1.0f - (b - 0.001f)));
-    else if (_BlendMode == 10)
-        output = (Common::Luminance(b) < 0.5) ? 1.0f - ((1.0f - a) / (4.0f * (b + 0.001f))) - 0.25f : a / (4.0f * (1.0f - (b - 0.001f))) + 0.25;
+    
+    switch(_BlendMode) {
+        case 1:
+            output = a + b;
+        break;
+        case 2:
+            output = a * b;
+        break;
+        case 3:
+            output = 1.0f - (1.0f - a) * (1.0f - b);
+        break;
+        case 4:
+            output = (Common::Luminance(a) < 0.5) ? 2.0f * a * b : 1.0f - 2.0f * (1.0f - a) * (1.0f - b);
+        break;
+        case 5:
+            output = (Common::Luminance(b) < 0.5) ? 1.0f - 2.0f * (1.0f - a) * (1.0f - b) : 2.0f * a * b;
+        break;
+        case 6:
+            output = (Common::Luminance(b) < 0.5) ? 2.0f * a * b + (a * a) * (1.0f - 2.0f * b) : 2.0f * a * (1.0f - b) + sqrt(a) * (2.0f * b - 1.0f);
+        break;
+        case 7:
+            output = a / (1.0f - (b - 0.001f));
+        break;
+        case 8:
+            output = 1.0f - ((1.0f - a) / (b + 0.001));
+        break;
+        case 9:
+            output = (Common::Luminance(b) < 0.5) ? 1.0f - ((1.0f - a) / (2.0f * (b + 0.001f))) : a / (2.0f * (1.0f - (b - 0.001f)));
+        break;
+        case 10:
+            output = (Common::Luminance(b) < 0.5) ? 1.0f - ((1.0f - a) / (4.0f * (b + 0.001f))) - 0.25f : a / (4.0f * (1.0f - (b - 0.001f))) + 0.25;
+        break;
+    }
 
     output = lerp(a, saturate(output), _Strength * skyMask);
 

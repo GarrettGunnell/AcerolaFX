@@ -62,22 +62,22 @@ uniform float _q <
 
 uniform float _DeltaTime < source = "frametime"; >;
 
-#define DIVIDE_ROUNDING_UP(n, d) uint(((n) + (d) - 1) / (d))
-#define WIDTH BUFFER_WIDTH / 2
-#define HEIGHT BUFFER_HEIGHT / 2
-#define DISPATCH_X DIVIDE_ROUNDING_UP(WIDTH, 16)
-#define DISPATCH_Y DIVIDE_ROUNDING_UP(HEIGHT, 16)
-#define TILE_COUNT (DISPATCH_X * DISPATCH_Y)
+#define AFX_DIVIDE_ROUNDING_UP(n, d) uint(((n) + (d) - 1) / (d))
+#define AFX_WIDTH  BUFFER_WIDTH / 2
+#define AFX_HEIGHT BUFFER_HEIGHT / 2
+#define AFX_DISPATCH_X AFX_DIVIDE_ROUNDING_UP(AFX_WIDTH, 16)
+#define AFX_DISPATCH_Y AFX_DIVIDE_ROUNDING_UP(AFX_HEIGHT, 16)
+#define AFX_TILE_COUNT (AFX_DISPATCH_X * AFX_DISPATCH_Y)
 
-#define LOG_RANGE (_MaxLogLuminance - _MinLogLuminance)
-#define LOG_RANGE_RCP 1.0f / LOG_RANGE
+#define AFX_LOG_RANGE (_MaxLogLuminance - _MinLogLuminance)
+#define AFX_LOG_RANGE_RCP 1.0f / AFX_LOG_RANGE
 
 texture2D AutoExposureTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D AutoExposure { Texture = AutoExposureTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AutoExposure, uv).rgba; }
 
 texture2D HistogramTileTex {
-    Width = TILE_COUNT; Height = 256; Format = R32F;
+    Width = AFX_TILE_COUNT; Height = 256; Format = R32F;
 }; storage2D HistogramTileBuffer { Texture = HistogramTileTex; };
 sampler2D HistogramTileSampler { Texture = HistogramTileTex; };
 
@@ -96,7 +96,7 @@ uint ColorToHistogramBin(float3 col) {
     if (luminance < 0.001f)
         return 0;
 
-    float logLuminance = saturate((log2(luminance) - _MinLogLuminance) *  LOG_RANGE_RCP);
+    float logLuminance = saturate((log2(luminance) - _MinLogLuminance) *  AFX_LOG_RANGE_RCP);
 
     return (uint)(logLuminance * 254.0f + 1.0f);
 }
@@ -107,7 +107,7 @@ void ConstructHistogramTiles(uint groupIndex : SV_GROUPINDEX, uint3 tid : SV_DIS
 
     barrier();
 
-    if (tid.x < WIDTH && tid.y < HEIGHT) {
+    if (tid.x < AFX_WIDTH && tid.y < AFX_HEIGHT) {
         float4 col = tex2Dfetch(DownScale::Half, tid.xy);
         uint binIndex = ColorToHistogramBin(col.rgb);
         atomicAdd(HistogramShared[binIndex], 1);
@@ -115,7 +115,7 @@ void ConstructHistogramTiles(uint groupIndex : SV_GROUPINDEX, uint3 tid : SV_DIS
 
     barrier();
 
-    uint dispatchIndex = tid.x / 16 + (tid.y / 16) * DISPATCH_X;
+    uint dispatchIndex = tid.x / 16 + (tid.y / 16) * AFX_DISPATCH_X;
     uint threadIndex = gtid.x + gtid.y * 16;
     tex2Dstore(HistogramTileBuffer, uint2(dispatchIndex, threadIndex), HistogramShared[groupIndex]);
 }
@@ -159,8 +159,8 @@ void CalculateHistogramAverage(uint3 tid : SV_DISPATCHTHREADID) {
     }
 
     if (tid.x == 0) {
-        float weightedLogAverage = (HistogramAvgShared[0] / max((float)(WIDTH * HEIGHT) - countForThisBin, 1.0f)) - 1.0f;
-        float weightedAverageLuminance = exp2(((weightedLogAverage / 254.0f) * LOG_RANGE) + _MinLogLuminance);
+        float weightedLogAverage = (HistogramAvgShared[0] / max((float)(AFX_WIDTH * AFX_HEIGHT) - countForThisBin, 1.0f)) - 1.0f;
+        float weightedAverageLuminance = exp2(((weightedLogAverage / 254.0f) * AFX_LOG_RANGE) + _MinLogLuminance);
         float luminanceLastFrame = tex2Dfetch(HistogramAverage, uint2(0, 0)).r;
         float adaptedLuminance = luminanceLastFrame + (weightedAverageLuminance - luminanceLastFrame) * (1 - exp(-_DeltaTime * _Tau));
         tex2Dstore(HistogramAverageBuffer, uint2(0, 0), adaptedLuminance);
@@ -199,12 +199,12 @@ technique AFX_AutoExposure <ui_label = "Auto Exposure"; ui_tooltip = "(HDR) Auto
 
     pass HistogramTiles {
         ComputeShader = ConstructHistogramTiles<16, 16>;
-        DispatchSizeX = DISPATCH_X;
-        DispatchSizeY = DISPATCH_Y;
+        DispatchSizeX = AFX_DISPATCH_X;
+        DispatchSizeY = AFX_DISPATCH_Y;
     }
 
     pass Histogram {
-        ComputeShader = MergeHistogramTiles<DIVIDE_ROUNDING_UP(TILE_COUNT, 4), 1>;
+        ComputeShader = MergeHistogramTiles<AFX_DIVIDE_ROUNDING_UP(AFX_TILE_COUNT, 4), 1>;
         DispatchSizeX = 1;
         DispatchSizeY = 256;
     }

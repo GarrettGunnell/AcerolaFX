@@ -170,7 +170,7 @@ float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
     return float4(output, col.a);
 }
 
-technique Tonemapping <ui_tooltip = "(HDR -> LDR) Converts all previous HDR passes into LDR."; > {
+technique AFX_Tonemapping <ui_label = "Tonemapping"; ui_tooltip = "(HDR -> LDR) Converts all previous HDR passes into LDR."; > {
     pass {
         RenderTarget = ToneMapTex;
 

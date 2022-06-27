@@ -71,7 +71,7 @@ float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     return float4(lerp(output.rgb, UI.rgb, UI.a * _MaskUI), col.a);
 }
 
-technique CRT  <ui_tooltip = "(LDR) Makes the screen look like a CRT television."; >  {
+technique AFX_CRT  <ui_label = "CRT"; ui_tooltip = "(LDR) Makes the screen look like a CRT television."; >  {
     pass {
         RenderTarget = CRTTex;
 

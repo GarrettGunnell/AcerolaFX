@@ -83,7 +83,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     return float4(output, col.a);
 }
 
-technique Blend <ui_tooltip = "(LDR) Blends either a flat color or the render with itself using photoshop blend mode formulas."; > {
+technique AFX_Blend <ui_label = "Blend"; ui_tooltip = "(LDR) Blends either a flat color or the render with itself using photoshop blend mode formulas."; > {
     pass {
         RenderTarget = BlendTex;
 

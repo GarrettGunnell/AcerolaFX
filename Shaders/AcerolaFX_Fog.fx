@@ -61,7 +61,7 @@ float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
     return float4(fogOutput, col.a);
 }
 
-technique Fog  <ui_tooltip = "(LDR) Applies a color to distant pixels to exaggerate distance."; >  {
+technique AFX_Fog <ui_label = "Fog"; ui_tooltip = "(LDR) Applies a color to distant pixels to exaggerate distance."; >  {
     pass {
         RenderTarget = FogTex;
 

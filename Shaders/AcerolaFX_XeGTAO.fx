@@ -513,7 +513,7 @@ void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
     #endif
 }
 
-technique SetupSSAO < hidden = true; enabled = true; timeout = 1; > {
+technique AFX_SetupSSAO < hidden = true; enabled = true; timeout = 1; > {
     pass CalculateNoise {
         ComputeShader = CS_CalculateNoise<8, 8>;
         DispatchSizeX = 8;
@@ -521,7 +521,7 @@ technique SetupSSAO < hidden = true; enabled = true; timeout = 1; > {
     }
 }
 
-technique XeGTAO < ui_tooltip = "(LDR) Approximate ground truth ambient occlusion for better lighting."; > {
+technique AFX_XeGTAO < ui_label = "XeGTAO"; ui_tooltip = "(LDR) Approximate ground truth ambient occlusion for better lighting."; > {
 
     pass PrefilterDepths {
         ComputeShader = CS_PrefilterDepths<NUM_THREADS_X, NUM_THREADS_Y>;

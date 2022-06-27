@@ -18,7 +18,7 @@ float4 PS_Gamma(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     return saturate(pow(abs(col), _Gamma));
 }
 
-technique Gamma < ui_tooltip = "(LDR) Adjusts the gamma correction of the screen."; > {
+technique AFX_Gamma < ui_label = "Gamma"; ui_tooltip = "(LDR) Adjusts the gamma correction of the screen."; > {
     pass {
         RenderTarget = GammaTex;
 

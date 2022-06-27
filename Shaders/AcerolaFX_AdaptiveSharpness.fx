@@ -91,7 +91,7 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
     return float4(output, col.a);
 }
 
-technique AdaptiveSharpness <ui_tooltip = "(LDR) Adaptively increases the contrast between edges to create the illusion of high detail."; > {
+technique AFX_AdaptiveSharpness <ui_label = "Sharpness"; ui_tooltip = "(LDR) Adaptively increases the contrast between edges to create the illusion of high detail."; > {
     pass Sharpen {
         RenderTarget = AdaptiveSharpnessTex;
 

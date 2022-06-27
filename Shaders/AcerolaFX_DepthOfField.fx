@@ -98,7 +98,7 @@ float4 PS_Bokeh(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     return float4(lerp(originalCol.rgb, col, smoothstep(0.1, 1, abs(coc))), 1.0f);
 }
 
-technique DepthOfField < ui_tooltip = "(HDR/LDR) Customize the focus of the screen."; > {
+technique AFX_DepthOfField < ui_label = "Depth Of Field"; ui_tooltip = "(HDR/LDR) Customize the focus of the screen."; > {
     pass {
         RenderTarget = ConfusionTex;
 

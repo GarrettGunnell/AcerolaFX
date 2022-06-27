@@ -112,7 +112,7 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
    return float4(lerp(output.rgb, UI.rgb, UI.a * _MaskUI), UI.a);
 }
 
-technique Dither  <ui_tooltip = "(LDR) Reduces the color palette of the image with ordered dithering."; >  {
+technique AFX_Dither  <ui_label = "Dither"; ui_tooltip = "(LDR) Reduces the color palette of the image with ordered dithering."; >  {
     pass {
         RenderTarget = DitherTex;
 

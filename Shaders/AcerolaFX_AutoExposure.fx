@@ -189,7 +189,7 @@ float4 PS_AutoExposure(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
 
 
-technique AutoExposure <ui_tooltip = "(HDR) Automatically adjusts exposure based on average luminance of the screen. Generally goes right before tone mapping."; > {
+technique AFX_AutoExposure <ui_label = "Auto Exposure"; ui_tooltip = "(HDR) Automatically adjusts exposure based on average luminance of the screen. Generally goes right before tone mapping."; > {
     pass Downscale {
         RenderTarget = DownScale::HalfTex;
 

@@ -119,7 +119,7 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     return float4(output, col.a);
 }
 
-technique ColorCorrection  <ui_tooltip = "(HDR/LDR) A suite of color correction effects."; >  {
+technique AFX_ColorCorrection  <ui_label = "Color Correct"; ui_tooltip = "(HDR/LDR) A suite of color correction effects."; >  {
     pass ColorCorrect {
         RenderTarget = ColorCorrectionTex;
 

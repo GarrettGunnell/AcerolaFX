@@ -15,7 +15,7 @@ uniform int _FogMode <
 > = 1;
 
 uniform float _Density <
-    ui_min = 0.0f; ui_max = 0.01f;
+    ui_min = 0.0f; ui_max = 0.05f;
     ui_label = "Fog Density";
     ui_type = "slider";
     ui_tooltip = "Adjust fog density.";
@@ -30,7 +30,7 @@ uniform float _Offset <
 
 uniform float _ZProjection <
     ui_category = "Advanced settings";
-    ui_min = 0.0f; ui_max = 4096.0f;
+    ui_min = 0.0f; ui_max = 5000.0f;
     ui_label = "Camera Z Projection";
     ui_type = "slider";
     ui_tooltip = "Adjust Camera Z Projection (depth of the camera frustum).";

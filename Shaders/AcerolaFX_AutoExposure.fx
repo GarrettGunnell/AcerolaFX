@@ -69,6 +69,16 @@ uniform float _DeltaTime < source = "frametime"; >;
 #define AFX_DISPATCH_Y AFX_DIVIDE_ROUNDING_UP(AFX_HEIGHT, 16)
 #define AFX_TILE_COUNT (AFX_DISPATCH_X * AFX_DISPATCH_Y)
 
+#if BUFFER_WIDTH <= 1920
+    #define AFX_TILE_STRIDE 2
+#elif BUFFER_WIDTH <= 2560
+    #define AFX_TILE_STRIDE 4
+#elif BUFFER_WIDTH <= 3440
+    #define AFX_TILE_STRIDE 8
+#else
+    #define AFX_TILE_STRIDE 16
+#endif
+
 #define AFX_LOG_RANGE (_MaxLogLuminance - _MinLogLuminance)
 #define AFX_LOG_RANGE_RCP 1.0f / AFX_LOG_RANGE
 
@@ -127,10 +137,10 @@ void MergeHistogramTiles(uint3 tid : SV_DISPATCHTHREADID, uint3 gtid : SV_GROUPT
 
     barrier();
 
-    float2 coord = float2(tid.x * 4, tid.y) + 0.5;
+    float2 coord = float2(tid.x * AFX_TILE_STRIDE, tid.y) + 0.5;
     uint histValues = 0;
     [unroll]
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < AFX_TILE_STRIDE; ++i)
         histValues += tex2Dfetch(HistogramTileSampler, coord + float2(i, 0)).r;
 
     atomicAdd(mergedBin, histValues);
@@ -204,7 +214,7 @@ technique AFX_AutoExposure <ui_label = "Auto Exposure"; ui_tooltip = "(HDR) Auto
     }
 
     pass Histogram {
-        ComputeShader = MergeHistogramTiles<AFX_DIVIDE_ROUNDING_UP(AFX_TILE_COUNT, 4), 1>;
+        ComputeShader = MergeHistogramTiles<AFX_DIVIDE_ROUNDING_UP(AFX_TILE_COUNT, AFX_TILE_STRIDE), 1>;
         DispatchSizeX = 1;
         DispatchSizeY = 256;
     }

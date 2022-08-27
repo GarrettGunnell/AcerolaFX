@@ -69,11 +69,7 @@ uniform float _DeltaTime < source = "frametime"; >;
 #define AFX_DISPATCH_Y AFX_DIVIDE_ROUNDING_UP(AFX_HEIGHT, 16)
 #define AFX_TILE_COUNT (AFX_DISPATCH_X * AFX_DISPATCH_Y)
 
-#if BUFFER_WIDTH <= 1920
-    #define AFX_TILE_STRIDE 2
-#elif BUFFER_WIDTH <= 2560
-    #define AFX_TILE_STRIDE 4
-#elif BUFFER_WIDTH <= 3440
+#if BUFFER_WIDTH <= 3440
     #define AFX_TILE_STRIDE 8
 #else
     #define AFX_TILE_STRIDE 16

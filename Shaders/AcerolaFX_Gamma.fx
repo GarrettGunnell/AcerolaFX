@@ -13,7 +13,6 @@ float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 float4 PS_Gamma(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = saturate(tex2D(Common::AcerolaBuffer, uv).rgba);
-    float UIMask = 1.0f - col.a;
 
     return saturate(pow(abs(col), _Gamma));
 }

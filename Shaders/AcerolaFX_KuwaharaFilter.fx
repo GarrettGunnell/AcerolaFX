@@ -22,6 +22,10 @@ uniform float _Q <
     ui_tooltip = "Adjusts sharpness of the color segments";
 > = 8;
 
+#ifndef AFX_SECTORS
+# define AFX_SECTORS 8
+#endif
+
 texture2D KuwaharaFilterTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D KuwaharaFilter { Texture = KuwaharaFilterTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(KuwaharaFilter, uv).rgba; }
@@ -79,7 +83,7 @@ texture2D WeightsTex { Width = 32; Height = 32; Format = R16F; };
 sampler2D K0 { Texture = WeightsTex; };
 
 float PS_CalculateSectors(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    int N = 8;
+    int N = AFX_SECTORS;
 
     float2 pos = uv - 0.5f;
     float phi = atan2(pos.y, pos.x);
@@ -114,7 +118,7 @@ void Generalized(in float2 uv, out float4 output) {
     float4 m[8];
     float3 s[8];
 
-    int _N = 8;
+    int _N = AFX_SECTORS;
 
     for (k = 0; k < _N; ++k) {
         m[k] = 0.0f;

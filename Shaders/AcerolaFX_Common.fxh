@@ -1,5 +1,7 @@
 #pragma once
 
+#define AFX_PI 3.14159265358979323846f
+
 namespace Common {
     texture2D AcerolaBufferTex {
         Width = BUFFER_WIDTH;

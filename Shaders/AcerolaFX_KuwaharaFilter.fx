@@ -8,7 +8,7 @@ uniform int _Filter <
     ui_tooltip = "Which extension of the kuwahara filter?";
 > = 0;
 
-uniform int _KernelSize <
+uniform uint _KernelSize <
     ui_min = 2; ui_max = 30;
     ui_type = "slider";
     ui_label = "Radius";

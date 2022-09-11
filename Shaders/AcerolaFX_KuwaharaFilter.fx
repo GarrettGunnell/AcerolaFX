@@ -4,7 +4,8 @@ uniform int _Filter <
     ui_type = "combo";
     ui_label = "Filter Type";
     ui_items = "Basic\0"
-               "Generalized\0";
+               "Generalized\0"
+               "Anisotropic\0";
     ui_tooltip = "Which extension of the kuwahara filter?";
 > = 0;
 
@@ -21,6 +22,24 @@ uniform float _Q <
     ui_label = "Sharpness";
     ui_tooltip = "Adjusts sharpness of the color segments";
 > = 8;
+
+uniform float _Alpha <
+   ui_min = 0.01f; ui_max = 2.0f;
+   ui_category_closed = true;
+   ui_category = "Anisotropic Settings";
+   ui_type = "drag";
+   ui_label = "Alpha";
+   ui_tooltip = "How much sectors overlap at the edge"; 
+> = 1.0f;
+
+uniform float _ZeroCrossing <
+   ui_min = 0.01f; ui_max = 2.0f;
+   ui_category_closed = true;
+   ui_category = "Anisotropic Settings";
+   ui_type = "drag";
+   ui_label = "Zero Crossing";
+   ui_tooltip = "How much sectors overlap with each other"; 
+> = 0.58f;
 
 #ifndef AFX_SECTORS
 # define AFX_SECTORS 8
@@ -163,11 +182,92 @@ void Generalized(in float2 uv, out float4 output) {
     output = output / output.w;
 }
 
+/* Anisotropic Kuwahara Filter */
+
+texture2D StructureTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D StructureTensor { Texture = StructureTensorTex;};
+texture2D TFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D TFM { Texture = TFMTex;};
+
+float gaussian(float sigma, float pos) {
+    return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
+}
+
+float4 PS_StructureTensor(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    if (_Filter == 2) {
+        float2 d = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+
+        float3 Sx = (
+             1.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x, -d.y)).rgb +
+             2.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x,  0.0)).rgb +
+             1.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x,  d.y)).rgb +
+            -1.0f * tex2D(Common::AcerolaBuffer, uv + float2(d.x, -d.y)).rgb +
+            -2.0f * tex2D(Common::AcerolaBuffer, uv + float2(d.x,  0.0)).rgb +
+            -1.0f * tex2D(Common::AcerolaBuffer, uv + float2(d.x,  d.y)).rgb
+        ) / 4.0f;
+
+        float3 Sy = (
+             1.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x, -d.y)).rgb +
+             2.0f * tex2D(Common::AcerolaBuffer, uv + float2( 0.0, -d.y)).rgb +
+             1.0f * tex2D(Common::AcerolaBuffer, uv + float2( d.x, -d.y)).rgb +
+            -1.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x, d.y)).rgb +
+            -2.0f * tex2D(Common::AcerolaBuffer, uv + float2( 0.0, d.y)).rgb +
+            -1.0f * tex2D(Common::AcerolaBuffer, uv + float2( d.x, d.y)).rgb
+        ) / 4.0f;
+
+        
+        return float4(dot(Sx, Sx), dot(Sy, Sy), dot(Sx, Sy), 1.0f);
+    } else return 0;
+}
+
+float4 PS_CalculateAnisotropy(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    if (_Filter == 2) {
+        int kernelRadius = 1;
+
+        float4 col = 0;
+        float kernelSum = 0.0f;
+
+        for (int x = -kernelRadius; x <= kernelRadius; ++x) {
+            float4 c = tex2D(StructureTensor, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT));
+            float gauss = gaussian(2.0f, x);
+
+            col += c * gauss;
+            kernelSum += gauss;
+        }
+
+        for (int y = -kernelRadius; y <= kernelRadius; ++y) {
+            float4 c = tex2D(StructureTensor, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT));
+            float gauss = gaussian(2.0f, y);
+
+            col += c * gauss;
+            kernelSum += gauss;
+        }
+
+        float3 g = col.rgb / kernelSum;
+
+        float lambda1 = 0.5f * (g.y + g.x + sqrt(g.y * g.y - 2.0f * g.x * g.y + g.x * g.x + 4.0f * g.z * g.z));
+        float lambda2 = 0.5f * (g.y + g.x - sqrt(g.y * g.y - 2.0f * g.x * g.y + g.x * g.x + 4.0f * g.z * g.z));
+
+        float2 v = float2(lambda1 - g.x, -g.z);
+        float2 t = length(v) > 0.0 ? normalize(v) : float2(0.0f, 1.0f);
+        float phi = -atan2(t.y, t.x);
+
+        float A = (lambda1 + lambda2 > 0.0f) ? (lambda1 - lambda2) / (lambda1 + lambda2) : 0.0f;
+        
+        return float4(t, phi, A);
+    } else return 0;
+}
+
+void Anisotropic(in float2 uv, out float4 output) {
+    output = 1;
+}
+
 float4 PS_KuwaharaFilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 output = 0;
 
     if (_Filter == 0) Basic(uv, output);
     if (_Filter == 1) Generalized(uv, output);
+    if (_Filter == 2) Anisotropic(uv, output);
 
     return output;
 }
@@ -189,6 +289,20 @@ technique AFX_SetupKuwahara < hidden = true; enabled = true; timeout = 1; > {
 }
 
 technique AFX_KuwaharaFilter < ui_label = "Kuwahara Filter"; ui_tooltip = "(LDR)(VERY HIGH PERFORMANCE COST) Applies a Kuwahara filter to the screen."; > {
+    pass {
+        RenderTarget = StructureTensorTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_StructureTensor;
+    }
+    
+    pass {
+        RenderTarget = TFMTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_CalculateAnisotropy;
+    }
+    
     pass {
         RenderTarget = KuwaharaFilterTex;
 

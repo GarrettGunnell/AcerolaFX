@@ -23,22 +23,31 @@ uniform float _Q <
     ui_tooltip = "Adjusts sharpness of the color segments";
 > = 8;
 
+uniform uint _BlurRadius <
+    ui_min = 1; ui_max = 6;
+    ui_category_closed = true;
+    ui_category = "Anisotropic Settings";
+    ui_type = "slider";
+    ui_label = "Blur Radius";
+    ui_tooltip = "Size of the gaussian blur kernel for eigenvectors";
+> = 2;
+
 uniform float _Alpha <
-   ui_min = 0.01f; ui_max = 2.0f;
-   ui_category_closed = true;
-   ui_category = "Anisotropic Settings";
-   ui_type = "drag";
-   ui_label = "Alpha";
-   ui_tooltip = "How much sectors overlap at the edge"; 
+    ui_min = 0.01f; ui_max = 2.0f;
+    ui_category_closed = true;
+    ui_category = "Anisotropic Settings";
+    ui_type = "drag";
+    ui_label = "Alpha";
+    ui_tooltip = "How much sectors overlap at the edge"; 
 > = 1.0f;
 
 uniform float _ZeroCrossing <
-   ui_min = 0.01f; ui_max = 2.0f;
-   ui_category_closed = true;
-   ui_category = "Anisotropic Settings";
-   ui_type = "drag";
-   ui_label = "Zero Crossing";
-   ui_tooltip = "How much sectors overlap with each other"; 
+    ui_min = 0.01f; ui_max = 2.0f;
+    ui_category_closed = true;
+    ui_category = "Anisotropic Settings";
+    ui_type = "drag";
+    ui_label = "Zero Crossing";
+    ui_tooltip = "How much sectors overlap with each other"; 
 > = 0.58f;
 
 #ifndef AFX_SECTORS
@@ -179,7 +188,7 @@ void Generalized(in float2 uv, out float4 output) {
         output += float4(m[k].rgb * w, w);
     }
 
-    output = output / output.w;
+    output /= output.w;
 }
 
 /* Anisotropic Kuwahara Filter */
@@ -222,7 +231,7 @@ float4 PS_StructureTensor(float4 position : SV_POSITION, float2 uv : TEXCOORD) :
 
 float4 PS_CalculateAnisotropy(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     if (_Filter == 2) {
-        int kernelRadius = 1;
+        int kernelRadius = _BlurRadius;
 
         float4 col = 0;
         float kernelSum = 0.0f;
@@ -259,7 +268,109 @@ float4 PS_CalculateAnisotropy(float4 position : SV_POSITION, float2 uv : TEXCOOR
 }
 
 void Anisotropic(in float2 uv, out float4 output) {
-    output = 1;
+    float alpha = _Alpha;
+    float4 t = tex2D(TFM, uv);
+
+    int _N = AFX_SECTORS;
+
+    float a = float((_KernelSize / 2.0f)) * clamp((alpha + t.w) / alpha, 0.1f, 2.0f);
+    float b = float((_KernelSize / 2.0f)) * clamp(alpha / (alpha + t.w), 0.1f, 2.0f);
+    
+    float cos_phi = cos(t.z);
+    float sin_phi = sin(t.z);
+
+    float2x2 R = float2x2(
+        float2(cos_phi, -sin_phi),
+        float2(sin_phi, cos_phi)
+    );
+
+    float2x2 S = float2x2(
+        float2(0.5f / a, 0.0f),
+        float2(0.0f, 0.5f / b)
+    );
+
+    float2x2 SR = mul(S, R);
+
+    int max_x = int(sqrt(a * a * cos_phi * cos_phi + b * b * sin_phi * sin_phi));
+    int max_y = int(sqrt(a * a * sin_phi * sin_phi + b * b * cos_phi * cos_phi));
+
+    float zeta = 2.0f / (_KernelSize / 2);
+
+    float zeroCross = _ZeroCrossing;
+    float sinZeroCross = sin(zeroCross);
+    float eta = (zeta + cos(zeroCross)) / (sinZeroCross * sinZeroCross);
+    int k;
+    float4 m[8];
+    float3 s[8];
+
+    for (k = 0; k < _N; ++k) {
+        m[k] = 0.0f;
+        s[k] = 0.0f;
+    }
+
+    [loop]
+    for (int y = 0; y <= max_y; ++y) {
+        [loop]
+        for (int x = -max_x; x <= max_x; ++x) {
+            float2 v = mul(SR, float2(x, y));
+            float3 c = tex2Dlod(Common::AcerolaBuffer, float4(uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), 0, 0)).rgb;
+            float sum = 0;
+            float w[8];
+            float z, vxx, vyy;
+            
+            /* Calculate Polynomial Weights */
+            vxx = zeta - eta * v.x * v.x;
+            vyy = zeta - eta * v.y * v.y;
+            z = max(0, v.y + vxx); 
+            w[0] = z * z;
+            sum += w[0];
+            z = max(0, -v.x + vyy); 
+            w[2] = z * z;
+            sum += w[2];
+            z = max(0, -v.y + vxx); 
+            w[4] = z * z;
+            sum += w[4];
+            z = max(0, v.x + vyy); 
+            w[6] = z * z;
+            sum += w[6];
+            v = sqrt(2.0f) / 2.0f * float2(v.x - v.y, v.x + v.y);
+            vxx = zeta - eta * v.x * v.x;
+            vyy = zeta - eta * v.y * v.y;
+            z = max(0, v.y + vxx); 
+            w[1] = z * z;
+            sum += w[1];
+            z = max(0, -v.x + vyy); 
+            w[3] = z * z;
+            sum += w[3];
+            z = max(0, -v.y + vxx); 
+            w[5] = z * z;
+            sum += w[5];
+            z = max(0, v.x + vyy); 
+            w[7] = z * z;
+            sum += w[7];
+            
+            float g = exp(-3.125f * dot(v,v)) / sum;
+            
+            for (int k = 0; k < 8; ++k) {
+                float wk = w[k] * g;
+                m[k] += float4(c * wk, wk);
+                s[k] += c * c * wk;
+            }
+        }
+    }
+
+    output = 0.0f;
+    for (k = 0; k < _N; ++k) {
+        m[k].rgb /= m[k].w;
+        s[k] = abs(s[k] / m[k].w - m[k].rgb * m[k].rgb);
+
+        float sigma2 = s[k].r + s[k].g + s[k].b;
+        float w = 1.0f / (1.0f + pow(abs(1000.0f * sigma2), 0.5f * _Q));
+
+        output += float4(m[k].rgb * w, w);
+    }
+
+    output /= output.w;
 }
 
 float4 PS_KuwaharaFilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

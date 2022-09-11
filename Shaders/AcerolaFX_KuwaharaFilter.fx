@@ -9,7 +9,7 @@ uniform int _Filter <
 > = 0;
 
 uniform int _KernelSize <
-    ui_min = 1; ui_max = 20;
+    ui_min = 2; ui_max = 30;
     ui_type = "slider";
     ui_label = "Radius";
     ui_tooltip = "Size of the kuwahara filter kernel";
@@ -53,14 +53,15 @@ float4 SampleQuadrant(float2 uv, int x1, int x2, int y1, int y2, float n) {
 }
 
 void Basic(in float2 uv, out float4 output) {
-    float windowSize = 2.0f * _KernelSize + 1;
+    int radius = _KernelSize / 2;
+    float windowSize = 2.0f * radius + 1;
     int quadrantSize = int(ceil(windowSize / 2.0f));
     int numSamples = quadrantSize * quadrantSize;
 
-    float4 q1 = SampleQuadrant(uv, -_KernelSize, 0, -_KernelSize, 0, numSamples);
-    float4 q2 = SampleQuadrant(uv, 0, _KernelSize, -_KernelSize, 0, numSamples);
-    float4 q3 = SampleQuadrant(uv, 0, _KernelSize, 0, _KernelSize, numSamples);
-    float4 q4 = SampleQuadrant(uv, -_KernelSize, 0, 0, _KernelSize, numSamples);
+    float4 q1 = SampleQuadrant(uv, -radius, 0, -radius, 0, numSamples);
+    float4 q2 = SampleQuadrant(uv, 0, radius, -radius, 0, numSamples);
+    float4 q3 = SampleQuadrant(uv, 0, radius, 0, radius, numSamples);
+    float4 q4 = SampleQuadrant(uv, -radius, 0, 0, radius, numSamples);
 
     float minstd = min(q1.a, min(q2.a, min(q3.a, q4.a)));
     int4 q = float4(q1.a, q2.a, q3.a, q4.a) == minstd;
@@ -117,6 +118,7 @@ void Generalized(in float2 uv, out float4 output) {
     int k;
     float4 m[8];
     float3 s[8];
+    int radius = _KernelSize / 2;
 
     int _N = AFX_SECTORS;
 
@@ -131,9 +133,9 @@ void Generalized(in float2 uv, out float4 output) {
         float2(-sin(piN), cos(piN))
     );
 
-    for (int x = -_KernelSize; x <= _KernelSize; ++x) {
-        for (int y = -_KernelSize; y <= _KernelSize; ++y) {
-            float2 v = 0.5f * float2(x, y) / float(_KernelSize);
+    for (int x = -radius; x <= radius; ++x) {
+        for (int y = -radius; y <= radius; ++y) {
+            float2 v = 0.5f * float2(x, y) / float(radius);
             float3 c = tex2D(Common::AcerolaBuffer, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb;
             [unroll]
             for (k = 0; k < _N; ++k) {

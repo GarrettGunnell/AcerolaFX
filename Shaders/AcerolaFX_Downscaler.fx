@@ -22,6 +22,7 @@ uniform bool _Point <
 #else
  #define DownscaleTex DownScale::HalfTex
 #endif
+
 sampler2D DownscalePoint { Texture = DownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 sampler2D Downscale { Texture = DownscaleTex; };
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Common::AcerolaBuffer, uv); }

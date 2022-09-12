@@ -38,7 +38,7 @@ uniform float _Alpha <
     ui_category = "Anisotropic Settings";
     ui_type = "drag";
     ui_label = "Alpha";
-    ui_tooltip = "How much sectors overlap at the edge"; 
+    ui_tooltip = "How extreme the angle of the kernel is."; 
 > = 1.0f;
 
 uniform float _ZeroCrossing <
@@ -49,6 +49,30 @@ uniform float _ZeroCrossing <
     ui_label = "Zero Crossing";
     ui_tooltip = "How much sectors overlap with each other"; 
 > = 0.58f;
+
+uniform bool _Invert <
+    ui_category = "Depth Settings";
+    ui_category_closed = true;
+    ui_label = "Invert Depth";
+> = false;
+
+uniform float _KuwaharaFalloff <
+    ui_category = "Depth Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 0.01f;
+    ui_label = "Falloff";
+    ui_type = "slider";
+    ui_tooltip = "Adjust rate at which the effect falls off at a distance.";
+> = 0.0f;
+
+uniform float _Offset <
+    ui_category = "Depth Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 1000.0f;
+    ui_label = "Falloff Offset";
+    ui_type = "slider";
+    ui_tooltip = "Offset distance at which effect starts to falloff.";
+> = 0.0f;
 
 #ifndef AFX_SECTORS
 # define AFX_SECTORS 8
@@ -379,6 +403,19 @@ float4 PS_KuwaharaFilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : 
     if (_Filter == 0) Basic(uv, output);
     if (_Filter == 1) Generalized(uv, output);
     if (_Filter == 2) Anisotropic(uv, output);
+
+    if (_KuwaharaFalloff > 0.0f) {
+        float3 col = tex2D(Common::AcerolaBuffer, uv).rgb;
+        float depth = ReShade::GetLinearizedDepth(uv);
+        float viewDistance = depth * 1000;
+
+        float falloffFactor = 0.0f;
+
+        falloffFactor = (_KuwaharaFalloff / log(2)) * max(0.0f, viewDistance - _Offset);
+        falloffFactor = exp2(-falloffFactor);
+
+        output.rgb = lerp(col.rgb, output.rgb, _Invert ? 1 - saturate(falloffFactor) : saturate(falloffFactor));
+    }
 
     return output;
 }

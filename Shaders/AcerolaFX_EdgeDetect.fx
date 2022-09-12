@@ -128,7 +128,7 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
         output = lerp(0.0f, output, saturate(falloffFactor));
     }
 
-    return float4(lerp(col.rgb, _EdgeColor.rgb, output), 1.0f);
+    return float4(lerp(col.rgb, _EdgeColor.rgb, saturate(output)), 1.0f);
 }
 
 technique AFX_EdgeDetect < ui_label = "Edge Detector"; ui_tooltip = "(LDR) Attempts to detect edges of the image."; > {

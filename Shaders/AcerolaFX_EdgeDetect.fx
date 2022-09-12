@@ -30,6 +30,24 @@ uniform float _NormalThreshold <
     ui_tooltip = "Adjust the threshold for normal differences to count as an edge.";
 > = 1.0f;
 
+uniform float _EdgeFalloff <
+    ui_category = "Depth Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 0.01f;
+    ui_label = "Falloff";
+    ui_type = "slider";
+    ui_tooltip = "Adjust rate at which the effect falls off at a distance.";
+> = 0.0f;
+
+uniform float _Offset <
+    ui_category = "Depth Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 1000.0f;
+    ui_label = "Falloff Offset";
+    ui_type = "slider";
+    ui_tooltip = "Offset distance at which effect starts to falloff.";
+> = 0.0f;
+
 texture2D NormalsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Normals { Texture = NormalsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 
@@ -97,6 +115,17 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
 
         if (dot(normalSum, 1) > _NormalThreshold)
             output = 1.0f;
+    }
+
+    if (_EdgeFalloff > 0.0f) {
+        float viewDistance = c.w * 1000;
+
+        float falloffFactor = 0.0f;
+
+        falloffFactor = (_EdgeFalloff / log(2)) * max(0.0f, viewDistance - _Offset);
+        falloffFactor = exp2(-falloffFactor);
+
+        output = lerp(0.0f, output, saturate(falloffFactor));
     }
 
     return float4(lerp(col.rgb, _EdgeColor.rgb, output), 1.0f);

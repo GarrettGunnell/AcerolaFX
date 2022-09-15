@@ -5,8 +5,21 @@ uniform float3 _FrameColor <
     ui_label = "Frame Color";
 > = 0.0f;
 
+uniform int2 _Offset <
+    ui_type = "drag";
+    ui_label = "Position";
+    ui_tooltip = "Positional offset from center of screen.";
+> = 0;
+
+uniform float _Theta <
+    ui_min = -180.0f; ui_max = 180.0f;
+    ui_label = "Rotation";
+    ui_type = "drag";
+    ui_tooltip = "Adjust rotation of the frame.";
+> = 0;
+
 uniform int _Left <
-    ui_min = 0; ui_max = BUFFER_WIDTH;
+    ui_min = -BUFFER_WIDTH; ui_max = BUFFER_WIDTH;
     ui_category = "Frame Dimensions";
     ui_category_closed = true;
     ui_label = "Left";
@@ -15,7 +28,7 @@ uniform int _Left <
 > = 0;
 
 uniform int _Right <
-    ui_min = 0; ui_max = BUFFER_WIDTH;
+    ui_min = -BUFFER_WIDTH; ui_max = BUFFER_WIDTH;
     ui_category = "Frame Dimensions";
     ui_category_closed = true;
     ui_label = "Right";
@@ -24,7 +37,7 @@ uniform int _Right <
 > = 0;
 
 uniform int _Top <
-    ui_min = 0; ui_max = BUFFER_HEIGHT;
+    ui_min = -BUFFER_HEIGHT; ui_max = BUFFER_HEIGHT;
     ui_category = "Frame Dimensions";
     ui_category_closed = true;
     ui_label = "Top";
@@ -33,13 +46,14 @@ uniform int _Top <
 > = 0;
 
 uniform int _Bottom <
-    ui_min = 0; ui_max = BUFFER_HEIGHT;
+    ui_min = -BUFFER_HEIGHT; ui_max = BUFFER_HEIGHT;
     ui_category = "Frame Dimensions";
     ui_category_closed = true;
     ui_label = "Bottom";
     ui_type = "drag";
     ui_tooltip = "Adjust frame cutoff for bottom side of the screen.";
 > = 0;
+
 
 uniform int _DepthCutoff <
     ui_min = 0; ui_max = 1000;
@@ -57,10 +71,17 @@ float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 float4 PS_Framing(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = saturate(tex2D(Common::AcerolaBuffer, uv).rgba);
     int depth = ReShade::GetLinearizedDepth(uv) * 1000;
-    float2 minBounds = float2(_Left, _Top);
-    float2 maxBounds = float2(BUFFER_WIDTH - _Right, BUFFER_HEIGHT - _Bottom);
 
-    if ((any(position.xy < minBounds) || any(maxBounds < position.xy)) && _DepthCutoff < depth)
+    float theta = radians(_Theta);
+    float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
+
+    float2 minBounds = float2(_Left, _Top) + _Offset;
+    float2 maxBounds = float2(BUFFER_WIDTH - _Right, BUFFER_HEIGHT - _Bottom) + _Offset;
+
+    float2 offset = float2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2) + _Offset;
+    float2 rotatedPosition = mul(R, position.xy - offset) + offset;
+
+    if ((any(rotatedPosition < minBounds) || any(maxBounds < rotatedPosition)) && _DepthCutoff < depth)
         return float4(_FrameColor, 1.0f);
 
 

@@ -11,6 +11,7 @@ namespace DownScale {
 
         Format = RGBA16F;
     }; sampler2D Half { Texture = HalfTex; };
+    storage2D s_Half { Texture = HalfTex; };
 
     #if AFX_NUM_DOWNSCALES > 1
     texture2D QuarterTex {

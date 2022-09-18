@@ -78,9 +78,10 @@ uniform float _DeltaTime < source = "frametime"; >;
 #define AFX_LOG_RANGE (_MaxLogLuminance - _MinLogLuminance)
 #define AFX_LOG_RANGE_RCP 1.0f / AFX_LOG_RANGE
 
-texture2D AutoExposureTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+texture2D AutoExposureTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D AutoExposure { Texture = AutoExposureTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AutoExposure, uv).rgba; }
+storage2D s_AutoExposure { Texture = AutoExposureTex; };
+void CS_EndPass(uint3 tid : SV_DISPATCHTHREADID) { tex2Dstore(Common::s_AcerolaBuffer, tid.xy, tex2Dfetch(AutoExposure, tid.xy)); }
 
 texture2D HistogramTileTex {
     Width = AFX_TILE_COUNT; Height = 256; Format = R32F;
@@ -173,16 +174,15 @@ void CalculateHistogramAverage(uint3 tid : SV_DISPATCHTHREADID) {
     }
 }
 
-float4 PS_Downscale(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = tex2D(Common::AcerolaBufferLinear, uv);
-    float avgLuminance = tex2D(HistogramAverage, uv).r;
+void CS_Downscale(uint3 tid : SV_DISPATCHTHREADID) {
+    float4 col = tex2Dfetch(Common::AcerolaBufferLinear, tid.xy);
     
-    return float4(lerp(col.rgb, 0.5f, col.a), col.a);
+    tex2Dstore(DownScale::s_Half, tid.xy, float4(lerp(col.rgb, 0.5f, col.a), col.a));
 }
 
-float4 PS_AutoExposure(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float avgLuminance = tex2D(HistogramAverage, uv).r;
+void CS_AutoExposure(uint3 tid : SV_DISPATCHTHREADID) {
+    float4 col = tex2Dfetch(Common::AcerolaBuffer, tid.xy);
+    float avgLuminance = tex2Dfetch(HistogramAverage, 0).r;
 
     float luminanceScale = (78.0f / (_q * _S1)) * (_S2 / _K) * avgLuminance;
 
@@ -190,17 +190,16 @@ float4 PS_AutoExposure(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     yxy.x /= luminanceScale;
     col.rgb = Common::convertYxy2RGB(yxy);
 
-    return float4(col.rgb, col.a);
+    tex2Dstore(s_AutoExposure, tid.xy, col);
 }
 
 
 
 technique AFX_AutoExposure <ui_label = "Auto Exposure"; ui_tooltip = "(HDR) Automatically adjusts exposure based on average luminance of the screen. Generally goes right before tone mapping."; > {
-    pass Downscale {
-        RenderTarget = DownScale::HalfTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_Downscale;
+    pass {
+        ComputeShader = CS_Downscale<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
 
     pass HistogramTiles {
@@ -221,17 +220,15 @@ technique AFX_AutoExposure <ui_label = "Auto Exposure"; ui_tooltip = "(HDR) Auto
         DispatchSizeY = 1;
     }
 
-    pass AutoExposure {
-        RenderTarget = AutoExposureTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_AutoExposure;
+    pass {
+        ComputeShader = CS_AutoExposure<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
 
-    pass EndPass {
-        RenderTarget = Common::AcerolaBufferTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_EndPass;
+    pass {
+        ComputeShader = CS_EndPass<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
 }

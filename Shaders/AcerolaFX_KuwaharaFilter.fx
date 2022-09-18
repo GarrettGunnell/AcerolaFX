@@ -56,6 +56,13 @@ uniform bool _Invert <
     ui_label = "Invert Depth";
 > = false;
 
+uniform bool _SampleSky <
+    ui_category = "Depth Settings";
+    ui_category_closed = true;
+    ui_label = "Sample Sky";
+    ui_tooltip = "Apply kuwahara filter to skybox or not (disable to preserve stars).";
+> = true;
+
 uniform float _KuwaharaFalloff <
     ui_category = "Depth Settings";
     ui_category_closed = true;
@@ -407,17 +414,19 @@ void CS_KuwaharaFilter(uint3 tid : SV_DISPATCHTHREADID) {
     if (_Filter == 1) Generalized(tid.xy, output);
     if (_Filter == 2) Anisotropic(tid.xy, output);
 
-    if (_KuwaharaFalloff > 0.0f) {
+    if ((_KuwaharaFalloff > 0.0f) || (!_SampleSky)) {
         float3 col = tex2Dfetch(Common::AcerolaBuffer, tid.xy).rgb;
         float depth = ReShade::GetLinearizedDepth(float2(tid.x, tid.y) / float2(BUFFER_WIDTH, BUFFER_HEIGHT));
         float viewDistance = depth * 1000;
 
         float falloffFactor = 0.0f;
-
         falloffFactor = (_KuwaharaFalloff / log(2)) * max(0.0f, viewDistance - _Offset);
         falloffFactor = exp2(-falloffFactor);
+        
+        falloffFactor = _Invert ? 1 - saturate(falloffFactor) : saturate(falloffFactor);
+        falloffFactor *= _SampleSky ? true : depth < 0.98f;
 
-        output.rgb = lerp(col.rgb, output.rgb, _Invert ? 1 - saturate(falloffFactor) : saturate(falloffFactor));
+        output.rgb = lerp(col.rgb, output.rgb, falloffFactor);
     }
 
     tex2Dstore(s_KuwaharaFilter, tid.xy, output);

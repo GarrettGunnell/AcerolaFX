@@ -1,5 +1,7 @@
 #pragma once
 
+#define AFX_PI 3.14159265358979323846f
+
 namespace Common {
     texture2D AcerolaBufferTex {
         Width = BUFFER_WIDTH;
@@ -8,6 +10,7 @@ namespace Common {
         Format = RGBA16F;
     }; sampler2D AcerolaBuffer { Texture = AcerolaBufferTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
     sampler2D AcerolaBufferLinear { Texture = AcerolaBufferTex; };
+    storage2D s_AcerolaBuffer { Texture = AcerolaBufferTex; };
 
     float Luminance(float3 color) {
         return max(0.00001f, dot(color, float3(0.2127f, 0.7152f, 0.0722f)));

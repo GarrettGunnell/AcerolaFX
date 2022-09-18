@@ -1,11 +1,19 @@
 #include "AcerolaFX_Common.fxh"
 
+uniform int _Filter <
+    ui_type = "combo";
+    ui_label = "Filter Type";
+    ui_items = "Basic\0"
+               "Adaptive\0";
+    ui_tooltip = "Which sharpness filter to use.";
+> = 0;
+
 uniform float _Sharpness <
-    ui_min = 0.0f; ui_max = 1.0f;
+    ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Sharpness";
     ui_type = "drag";
     ui_tooltip = "Adjust sharpening strength.";
-> = 1.0f;
+> = 0.0f;
 
 uniform float _SharpnessFalloff <
     ui_category = "Advanced Settings";
@@ -22,7 +30,7 @@ uniform float _Offset <
     ui_min = 0.0f; ui_max = 1000.0f;
     ui_label = "Falloff Offset";
     ui_type = "slider";
-    ui_tooltip = "Offset distance at which sharpness starts to falloff..";
+    ui_tooltip = "Offset distance at which sharpness starts to falloff.";
 > = 0.0f;
 
 float3 Sample(float2 uv, float deltaX, float deltaY) {
@@ -41,9 +49,21 @@ texture2D AdaptiveSharpnessTex < pooled = true; > { Width = BUFFER_WIDTH; Height
 sampler2D AdaptiveSharpness { Texture = AdaptiveSharpnessTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AdaptiveSharpness, uv).rgba; }
 
-float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = saturate(tex2D(Common::AcerolaBuffer, uv));
+void Basic(float2 uv, out float3 output) {
+    float3 col = Sample(uv, 0, 0);
 
+    float neighbor = _Sharpness * -1;
+    float center = _Sharpness * 4 + 1;
+
+    float3 n = Sample(uv, 0, 1);
+    float3 e = Sample(uv, 1, 0);
+    float3 s = Sample(uv, 0, -1);
+    float3 w = Sample(uv, -1, 0);
+
+    output = n * neighbor + e * neighbor + col * center + s * neighbor + w * neighbor;
+}
+
+void Adaptive(float2 uv, out float3 output) {
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float sharpness = -(1.0f / lerp(10.0f, 7.0f, saturate(_Sharpness)));
 
@@ -74,8 +94,16 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
     float3 w = amp * sharpness;
     float3 rcpW = 1.0f / (1.0f + 4.0f * w);
 
-    float3 output = saturate((b * w + d * w + f * w + h * w + e) * rcpW);
+    output = saturate((b * w + d * w + f * w + h * w + e) * rcpW);
+}
 
+float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float4 col = saturate(tex2D(Common::AcerolaBuffer, uv));
+
+    float3 output = 0;
+    if (_Filter == 0) Basic(uv, output);
+    if (_Filter == 1) Adaptive(uv, output);
+    
     if (_SharpnessFalloff > 0.0f) {
         float depth = ReShade::GetLinearizedDepth(uv);
         float viewDistance = depth * 1000;
@@ -91,7 +119,7 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
     return float4(output, col.a);
 }
 
-technique AFX_AdaptiveSharpness <ui_label = "Sharpness"; ui_tooltip = "(LDR) Adaptively increases the contrast between edges to create the illusion of high detail."; > {
+technique AFX_AdaptiveSharpness <ui_label = "Sharpness"; ui_tooltip = "(LDR) Increases the contrast between edges to create the illusion of high detail."; > {
     pass Sharpen {
         RenderTarget = AdaptiveSharpnessTex;
 

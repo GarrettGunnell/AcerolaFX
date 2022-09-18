@@ -258,7 +258,6 @@ void CS_StructureTensor(uint3 tid : SV_DISPATCHTHREADID) {
             -1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2( d.x, d.y)).rgb
         ) / 4.0f;
 
-        
         tex2Dstore(s_StructureTensor, tid.xy, float4(dot(Sx, Sx), dot(Sy, Sy), dot(Sx, Sy), 1.0f));
     } else tex2Dstore(s_StructureTensor, tid.xy, 0);
 }

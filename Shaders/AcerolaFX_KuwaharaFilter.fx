@@ -78,9 +78,10 @@ uniform float _Offset <
 # define AFX_SECTORS 8
 #endif
 
-texture2D KuwaharaFilterTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+texture2D KuwaharaFilterTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D KuwaharaFilter { Texture = KuwaharaFilterTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(KuwaharaFilter, uv).rgba; }
+storage2D s_KuwaharaFilter { Texture = KuwaharaFilterTex; };
+void CS_EndPass(uint3 tid : SV_DISPATCHTHREADID) { tex2Dstore(Common::s_AcerolaBuffer, tid.xy, tex2Dfetch(KuwaharaFilter, tid.xy)); }
 
 /* Basic Kuwahara Filter */
 float4 SampleQuadrant(float2 uv, int x1, int x2, int y1, int y2, float n) {
@@ -90,7 +91,7 @@ float4 SampleQuadrant(float2 uv, int x1, int x2, int y1, int y2, float n) {
 
     for (int x = x1; x <= x2; ++x) {
         for (int y = y1; y <= y2; ++y) {
-            float3 c = tex2D(Common::AcerolaBuffer, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb;
+            float3 c = tex2Dfetch(Common::AcerolaBuffer, uv + float2(x, y)).rgb;
             float l = Common::Luminance(c);
             luminanceSum += l;
             luminanceSum2 += l * l;
@@ -188,10 +189,10 @@ void Generalized(in float2 uv, out float4 output) {
     for (int x = -radius; x <= radius; ++x) {
         for (int y = -radius; y <= radius; ++y) {
             float2 v = 0.5f * float2(x, y) / float(radius);
-            float3 c = tex2D(Common::AcerolaBuffer, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb;
+            float3 c = tex2Dfetch(Common::AcerolaBuffer, uv + float2(x, y)).rgb;
             [unroll]
             for (k = 0; k < _N; ++k) {
-                float w = tex2D(K0, 0.5f + v).x;
+                float w = tex2Dlod(K0, float4(0.5f + v, 0, 0)).x;
 
                 m[k] += float4(c * w, w);
                 s[k] += c * c * w;
@@ -218,42 +219,44 @@ void Generalized(in float2 uv, out float4 output) {
 /* Anisotropic Kuwahara Filter */
 
 texture2D StructureTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D StructureTensor { Texture = StructureTensorTex;};
+sampler2D StructureTensor { Texture = StructureTensorTex; };
+storage2D s_StructureTensor { Texture = StructureTensorTex; };
 texture2D TFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D TFM { Texture = TFMTex;};
+sampler2D TFM { Texture = TFMTex; };
+storage2D s_TFM { Texture = TFMTex; };
 
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
 }
 
-float4 PS_StructureTensor(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+void CS_StructureTensor(uint3 tid : SV_DISPATCHTHREADID) {
     if (_Filter == 2) {
-        float2 d = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        float2 d = float2(1, 1);
 
         float3 Sx = (
-             1.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x, -d.y)).rgb +
-             2.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x,  0.0)).rgb +
-             1.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x,  d.y)).rgb +
-            -1.0f * tex2D(Common::AcerolaBuffer, uv + float2(d.x, -d.y)).rgb +
-            -2.0f * tex2D(Common::AcerolaBuffer, uv + float2(d.x,  0.0)).rgb +
-            -1.0f * tex2D(Common::AcerolaBuffer, uv + float2(d.x,  d.y)).rgb
+             1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2(-d.x, -d.y)).rgb +
+             2.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2(-d.x,  0.0)).rgb +
+             1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2(-d.x,  d.y)).rgb +
+            -1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2(d.x, -d.y)).rgb +
+            -2.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2(d.x,  0.0)).rgb +
+            -1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2(d.x,  d.y)).rgb
         ) / 4.0f;
 
         float3 Sy = (
-             1.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x, -d.y)).rgb +
-             2.0f * tex2D(Common::AcerolaBuffer, uv + float2( 0.0, -d.y)).rgb +
-             1.0f * tex2D(Common::AcerolaBuffer, uv + float2( d.x, -d.y)).rgb +
-            -1.0f * tex2D(Common::AcerolaBuffer, uv + float2(-d.x, d.y)).rgb +
-            -2.0f * tex2D(Common::AcerolaBuffer, uv + float2( 0.0, d.y)).rgb +
-            -1.0f * tex2D(Common::AcerolaBuffer, uv + float2( d.x, d.y)).rgb
+             1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2(-d.x, -d.y)).rgb +
+             2.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2( 0.0, -d.y)).rgb +
+             1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2( d.x, -d.y)).rgb +
+            -1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2(-d.x, d.y)).rgb +
+            -2.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2( 0.0, d.y)).rgb +
+            -1.0f * tex2Dfetch(Common::AcerolaBuffer, tid.xy + float2( d.x, d.y)).rgb
         ) / 4.0f;
 
         
-        return float4(dot(Sx, Sx), dot(Sy, Sy), dot(Sx, Sy), 1.0f);
-    } else return 0;
+        tex2Dstore(s_StructureTensor, tid.xy, float4(dot(Sx, Sx), dot(Sy, Sy), dot(Sx, Sy), 1.0f));
+    } else tex2Dstore(s_StructureTensor, tid.xy, 0);
 }
 
-float4 PS_CalculateAnisotropy(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+void CS_CalculateAnisotropy(uint3 tid : SV_DISPATCHTHREADID) {
     if (_Filter == 2) {
         int kernelRadius = _BlurRadius;
 
@@ -261,7 +264,7 @@ float4 PS_CalculateAnisotropy(float4 position : SV_POSITION, float2 uv : TEXCOOR
         float kernelSum = 0.0f;
 
         for (int x = -kernelRadius; x <= kernelRadius; ++x) {
-            float4 c = tex2D(StructureTensor, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT));
+            float4 c = tex2Dfetch(StructureTensor, tid.xy + float2(x, 0));
             float gauss = gaussian(2.0f, x);
 
             col += c * gauss;
@@ -269,7 +272,7 @@ float4 PS_CalculateAnisotropy(float4 position : SV_POSITION, float2 uv : TEXCOOR
         }
 
         for (int y = -kernelRadius; y <= kernelRadius; ++y) {
-            float4 c = tex2D(StructureTensor, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT));
+            float4 c = tex2Dfetch(StructureTensor, tid.xy + float2(0, y));
             float gauss = gaussian(2.0f, y);
 
             col += c * gauss;
@@ -287,13 +290,13 @@ float4 PS_CalculateAnisotropy(float4 position : SV_POSITION, float2 uv : TEXCOOR
 
         float A = (lambda1 + lambda2 > 0.0f) ? (lambda1 - lambda2) / (lambda1 + lambda2) : 0.0f;
         
-        return float4(t, phi, A);
-    } else return 0;
+        tex2Dstore(s_TFM, tid.xy, float4(t, phi, A));
+    } else tex2Dstore(s_TFM, tid.xy, 0);
 }
 
 void Anisotropic(in float2 uv, out float4 output) {
     float alpha = _Alpha;
-    float4 t = tex2D(TFM, uv);
+    float4 t = tex2Dfetch(TFM, uv);
 
     int _N = AFX_SECTORS;
 
@@ -337,7 +340,7 @@ void Anisotropic(in float2 uv, out float4 output) {
         [loop]
         for (int x = -max_x; x <= max_x; ++x) {
             float2 v = mul(SR, float2(x, y));
-            float3 c = tex2Dlod(Common::AcerolaBuffer, float4(uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT), 0, 0)).rgb;
+            float3 c = tex2Dfetch(Common::AcerolaBuffer, uv + float2(x, y)).rgb;
             float sum = 0;
             float w[8];
             float z, vxx, vyy;
@@ -397,16 +400,16 @@ void Anisotropic(in float2 uv, out float4 output) {
     output /= output.w;
 }
 
-float4 PS_KuwaharaFilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+void CS_KuwaharaFilter(uint3 tid : SV_DISPATCHTHREADID) {
     float4 output = 0;
-
-    if (_Filter == 0) Basic(uv, output);
-    if (_Filter == 1) Generalized(uv, output);
-    if (_Filter == 2) Anisotropic(uv, output);
+    
+    if (_Filter == 0) Basic(tid.xy, output);
+    if (_Filter == 1) Generalized(tid.xy, output);
+    if (_Filter == 2) Anisotropic(tid.xy, output);
 
     if (_KuwaharaFalloff > 0.0f) {
-        float3 col = tex2D(Common::AcerolaBuffer, uv).rgb;
-        float depth = ReShade::GetLinearizedDepth(uv);
+        float3 col = tex2Dfetch(Common::AcerolaBuffer, tid.xy).rgb;
+        float depth = ReShade::GetLinearizedDepth(float2(tid.x, tid.y) / float2(BUFFER_WIDTH, BUFFER_HEIGHT));
         float viewDistance = depth * 1000;
 
         float falloffFactor = 0.0f;
@@ -417,7 +420,7 @@ float4 PS_KuwaharaFilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : 
         output.rgb = lerp(col.rgb, output.rgb, _Invert ? 1 - saturate(falloffFactor) : saturate(falloffFactor));
     }
 
-    return output;
+    tex2Dstore(s_KuwaharaFilter, tid.xy, output);
 }
 
 technique AFX_SetupKuwahara < hidden = true; enabled = true; timeout = 1; > {
@@ -438,30 +441,26 @@ technique AFX_SetupKuwahara < hidden = true; enabled = true; timeout = 1; > {
 
 technique AFX_KuwaharaFilter < ui_label = "Kuwahara Filter"; ui_tooltip = "(LDR)(VERY HIGH PERFORMANCE COST) Applies a Kuwahara filter to the screen."; > {
     pass {
-        RenderTarget = StructureTensorTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_StructureTensor;
+        ComputeShader = CS_StructureTensor<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
-    
+
     pass {
-        RenderTarget = TFMTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_CalculateAnisotropy;
+        ComputeShader = CS_CalculateAnisotropy<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
-    
+
     pass {
-        RenderTarget = KuwaharaFilterTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_KuwaharaFilter;
+        ComputeShader = CS_KuwaharaFilter<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
 
-    pass EndPass {
-        RenderTarget = Common::AcerolaBufferTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_EndPass;
+    pass {
+        ComputeShader = CS_EndPass<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
 }

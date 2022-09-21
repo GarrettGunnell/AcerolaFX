@@ -50,10 +50,11 @@ uniform float _ZeroCrossing <
     ui_tooltip = "How much sectors overlap with each other"; 
 > = 0.58f;
 
-uniform bool _Invert <
+uniform bool _DepthAware <
     ui_category = "Depth Settings";
     ui_category_closed = true;
-    ui_label = "Invert Depth";
+    ui_label = "Depth Aware";
+    ui_tooltip = "If enabled, change kuwahara filter radius based on depth.";
 > = false;
 
 uniform bool _SampleSky <
@@ -63,23 +64,23 @@ uniform bool _SampleSky <
     ui_tooltip = "Apply kuwahara filter to skybox or not (disable to preserve stars).";
 > = true;
 
-uniform float _KuwaharaFalloff <
+uniform uint _MinKernelSize <
     ui_category = "Depth Settings";
     ui_category_closed = true;
-    ui_min = 0.0f; ui_max = 0.01f;
-    ui_label = "Falloff";
+    ui_min = 2; ui_max = 30;
+    ui_label = "Min. Kernel Size";
     ui_type = "slider";
-    ui_tooltip = "Adjust rate at which the effect falls off at a distance.";
-> = 0.0f;
+    ui_tooltip = "Kernel size for objects close to camera (if using depth filtering).";
+> = 2;
 
-uniform float _Offset <
+uniform float _DepthCurve <
+    ui_min = 0.0f; ui_max = 5.0f;
     ui_category = "Depth Settings";
     ui_category_closed = true;
-    ui_min = 0.0f; ui_max = 1000.0f;
-    ui_label = "Falloff Offset";
-    ui_type = "slider";
-    ui_tooltip = "Offset distance at which effect starts to falloff.";
-> = 0.0f;
+    ui_label = "Depth Curve";
+    ui_type = "drag";
+    ui_tooltip = "Change rate at which kernel sizes change between depths.";
+> = 1.0f;
 
 #ifndef AFX_SECTORS
 # define AFX_SECTORS 8
@@ -112,8 +113,11 @@ float4 SampleQuadrant(float2 uv, int x1, int x2, int y1, int y2, float n) {
     return float4(colSum / n, stdev);
 }
 
-void Basic(in float2 uv, out float4 output) {
+void Basic(in float2 uv, in float depth, out float4 output) {
     int radius = _KernelSize / 2;
+    if (_DepthAware)
+        radius = round(lerp(_MinKernelSize / 2.0f, _KernelSize / 2.0f, smoothstep(0.0f, 1.0f, depth)));
+
     float windowSize = 2.0f * radius + 1;
     int quadrantSize = int(ceil(windowSize / 2.0f));
     int numSamples = quadrantSize * quadrantSize;
@@ -174,11 +178,13 @@ float PS_GaussianFilterSectors(float4 position : SV_POSITION, float2 uv : TEXCOO
     return (weight / kernelSum) * gaussian(sigmaR, (uv - 0.5f) * sigmaR * 5);
 }
 
-void Generalized(in float2 uv, out float4 output) {
+void Generalized(in float2 uv, in float depth, out float4 output) {
     int k;
     float4 m[8];
     float3 s[8];
     int radius = _KernelSize / 2;
+    if (_DepthAware)
+        radius = round(lerp(_MinKernelSize / 2.0f, _KernelSize / 2.0f, smoothstep(0.0f, 1.0f, depth)));
 
     int _N = AFX_SECTORS;
 
@@ -300,14 +306,17 @@ void CS_CalculateAnisotropy(uint3 tid : SV_DISPATCHTHREADID) {
     } else tex2Dstore(s_TFM, tid.xy, 0);
 }
 
-void Anisotropic(in float2 uv, out float4 output) {
+void Anisotropic(in float2 uv, in float depth, out float4 output) {
     float alpha = _Alpha;
     float4 t = tex2Dfetch(TFM, uv);
 
     int _N = AFX_SECTORS;
+    int radius = _KernelSize / 2;
+    if (_DepthAware)
+        radius = round(lerp(_MinKernelSize / 2.0f, _KernelSize / 2.0f, smoothstep(0.0f, 1.0f, depth)));
 
-    float a = float((_KernelSize / 2.0f)) * clamp((alpha + t.w) / alpha, 0.1f, 2.0f);
-    float b = float((_KernelSize / 2.0f)) * clamp(alpha / (alpha + t.w), 0.1f, 2.0f);
+    float a = radius * clamp((alpha + t.w) / alpha, 0.1f, 2.0f);
+    float b = radius * clamp(alpha / (alpha + t.w), 0.1f, 2.0f);
     
     float cos_phi = cos(t.z);
     float sin_phi = sin(t.z);
@@ -407,25 +416,17 @@ void Anisotropic(in float2 uv, out float4 output) {
 }
 
 void CS_KuwaharaFilter(uint3 tid : SV_DISPATCHTHREADID) {
-    float4 output = 0;
-    
-    if (_Filter == 0) Basic(tid.xy, output);
-    if (_Filter == 1) Generalized(tid.xy, output);
-    if (_Filter == 2) Anisotropic(tid.xy, output);
+    float4 output = 1.0f;
+    float depth = ReShade::GetLinearizedDepth(tid.xy / float2(BUFFER_WIDTH, BUFFER_HEIGHT));
+    bool sampleSky = _SampleSky ? true : depth < 0.98f;
 
-    if ((_KuwaharaFalloff > 0.0f) || (!_SampleSky)) {
-        float3 col = tex2Dfetch(Common::AcerolaBuffer, tid.xy).rgb;
-        float depth = ReShade::GetLinearizedDepth(float2(tid.x, tid.y) / float2(BUFFER_WIDTH, BUFFER_HEIGHT));
-        float viewDistance = depth * 1000;
-
-        float falloffFactor = 0.0f;
-        falloffFactor = (_KuwaharaFalloff / log(2)) * max(0.0f, viewDistance - _Offset);
-        falloffFactor = exp2(-falloffFactor);
-        
-        falloffFactor = _Invert ? 1 - saturate(falloffFactor) : saturate(falloffFactor);
-        falloffFactor *= _SampleSky ? true : depth < 0.98f;
-
-        output.rgb = lerp(col.rgb, output.rgb, falloffFactor);
+    if (sampleSky) {
+        depth = pow(abs(depth), _DepthCurve);
+        if (_Filter == 0) Basic(tid.xy, depth, output);
+        if (_Filter == 1) Generalized(tid.xy, depth, output);
+        if (_Filter == 2) Anisotropic(tid.xy, depth, output);
+    } else {
+        output.rgb = tex2Dfetch(Common::AcerolaBuffer, tid.xy).rgb;
     }
 
     tex2Dstore(s_KuwaharaFilter, tid.xy, output);

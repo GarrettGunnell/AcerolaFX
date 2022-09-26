@@ -41,8 +41,8 @@ uniform bool _SampleSky <
     ui_tooltip = "Include sky in blend.";
 > = true;
 
-texture2D BlendTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Blend { Texture = BlendTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_BlendTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D Blend { Texture = AFX_BlendTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Blend, uv).rgba; }
 
 float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -98,7 +98,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
 
 technique AFX_Blend <ui_label = "Blend"; ui_tooltip = "(LDR) Blends either a flat color or the render with itself using photoshop blend mode formulas."; > {
     pass {
-        RenderTarget = BlendTex;
+        RenderTarget = AFX_BlendTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Blend;

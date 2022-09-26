@@ -67,7 +67,7 @@ uniform float _FinalValuePower <
 uniform float _SigmaD <
     ui_category = "Blur Settings";
     ui_category_closed = true;
-    ui_min = 0.01f; ui_max = 3.0f;
+    ui_min = 0.01f; ui_max = 10.0f;
     ui_label = "SigmaD";
     ui_type = "drag";
     ui_tooltip = "Modify the distance of bilateral filter samples (if you set this too high it will crash the game probably so I have taken that power away from you).";
@@ -95,30 +95,30 @@ uniform float _SigmaR <
     #define AFX_DEBUG_SSAO 0
 #endif
 
-texture2D AOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D AO { Texture = AOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_AO { Texture = AOTex; };
+texture2D AFX_AOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D AO { Texture = AFX_AOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_AO { Texture = AFX_AOTex; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AO, uv); }
 
-texture2D OutDepthsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
-sampler2D OutDepths { Texture = OutDepthsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_OutDepths { Texture = OutDepthsTex; };
+texture2D AFX_OutDepthsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
+sampler2D OutDepths { Texture = AFX_OutDepthsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_OutDepths { Texture = AFX_OutDepthsTex; };
 
-texture2D OutEdgesTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
-sampler2D OutEdges { Texture = OutEdgesTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_OutEdges { Texture = OutEdgesTex; };
+texture2D AFX_OutEdgesTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
+sampler2D OutEdges { Texture = AFX_OutEdgesTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_OutEdges { Texture = AFX_OutEdgesTex; };
 
-texture2D NoiseTex { Width = 64; Height = 64; Format = R8; };
-sampler2D Noise { Texture = NoiseTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_Noise { Texture = NoiseTex; };
+texture2D AFX_NoiseTex { Width = 64; Height = 64; Format = R8; };
+sampler2D Noise { Texture = AFX_NoiseTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_Noise { Texture = AFX_NoiseTex; };
 
-texture2D OutWorkingAOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
-sampler2D OutWorkingAO { Texture = OutWorkingAOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_OutWorkingAO { Texture = OutWorkingAOTex; };
+texture2D AFX_OutWorkingAOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
+sampler2D OutWorkingAO { Texture = AFX_OutWorkingAOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_OutWorkingAO { Texture = AFX_OutWorkingAOTex; };
 
-texture2D AOOutputTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
-sampler2D AOOutput { Texture = AOOutputTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_AOOutput { Texture = AOOutputTex; };
+texture2D AFX_AOOutputTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
+sampler2D AOOutput { Texture = AFX_AOOutputTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_AOOutput { Texture = AFX_AOOutputTex; };
 
 
 #define DENOISE_BLUR (1e4f)

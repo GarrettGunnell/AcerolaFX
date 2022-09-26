@@ -48,11 +48,11 @@ uniform float _Offset <
     ui_tooltip = "Offset distance at which effect starts to falloff.";
 > = 0.0f;
 
-texture2D NormalsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Normals { Texture = NormalsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_NormalsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D Normals { Texture = AFX_NormalsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 
-texture2D EdgeDetectTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D EdgeDetect { Texture = EdgeDetectTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_EdgeDetectTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D EdgeDetect { Texture = AFX_EdgeDetectTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(EdgeDetect, uv).rgba; }
 
 float4 PS_CalculateNormals(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -133,14 +133,14 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
 
 technique AFX_EdgeDetect < ui_label = "Edge Detector"; ui_tooltip = "(LDR) Attempts to detect edges of the image."; > {
     pass {
-        RenderTarget = NormalsTex;
+        RenderTarget = AFX_NormalsTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_CalculateNormals;
     }
 
     pass {
-        RenderTarget = EdgeDetectTex;
+        RenderTarget = AFX_EdgeDetectTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_EdgeDetect;

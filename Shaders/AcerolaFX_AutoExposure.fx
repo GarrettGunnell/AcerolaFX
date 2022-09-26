@@ -78,24 +78,24 @@ uniform float _DeltaTime < source = "frametime"; >;
 #define AFX_LOG_RANGE (_MaxLogLuminance - _MinLogLuminance)
 #define AFX_LOG_RANGE_RCP 1.0f / AFX_LOG_RANGE
 
-texture2D AutoExposureTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D AutoExposure { Texture = AutoExposureTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_AutoExposure { Texture = AutoExposureTex; };
+texture2D AFX_AutoExposureTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D AutoExposure { Texture = AFX_AutoExposureTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_AutoExposure { Texture = AFX_AutoExposureTex; };
 void CS_EndPass(uint3 tid : SV_DISPATCHTHREADID) { tex2Dstore(Common::s_AcerolaBuffer, tid.xy, tex2Dfetch(AutoExposure, tid.xy)); }
 
-texture2D HistogramTileTex {
+texture2D AFX_HistogramTileTex {
     Width = AFX_TILE_COUNT; Height = 256; Format = R32F;
-}; storage2D HistogramTileBuffer { Texture = HistogramTileTex; };
-sampler2D HistogramTileSampler { Texture = HistogramTileTex; };
+}; storage2D HistogramTileBuffer { Texture = AFX_HistogramTileTex; };
+sampler2D HistogramTileSampler { Texture = AFX_HistogramTileTex; };
 
-texture2D HistogramTex {
+texture2D AFX_HistogramTex {
     Width = 256; Height = 1; Format = R32F;
-}; storage2D HistogramBuffer { Texture = HistogramTex; };
-sampler2D HistogramSampler { Texture = HistogramTex; };
+}; storage2D HistogramBuffer { Texture = AFX_HistogramTex; };
+sampler2D HistogramSampler { Texture = AFX_HistogramTex; };
 
-texture2D HistogramAverageTex { Format = R32F; };
-storage2D HistogramAverageBuffer { Texture = HistogramAverageTex; };
-sampler2D HistogramAverage { Texture = HistogramAverageTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_HistogramAverageTex { Format = R32F; };
+storage2D HistogramAverageBuffer { Texture = AFX_HistogramAverageTex; };
+sampler2D HistogramAverage { Texture = AFX_HistogramAverageTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 
 uint ColorToHistogramBin(float3 col) {
     float luminance = Common::Luminance(col);

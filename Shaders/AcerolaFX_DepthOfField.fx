@@ -29,12 +29,12 @@ uniform int _SampleOffset <
     ui_tooltip = "Adjust bokeh sample distance between pixels.";
 > = 1;
 
-texture2D DepthOfFieldTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D DepthOfField { Texture = DepthOfFieldTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_DepthOfFieldTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D DepthOfField { Texture = AFX_DepthOfFieldTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(DepthOfField, uv).rgba; }
 
-texture2D ConfusionTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
-sampler2D Confusion { Texture = ConfusionTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_ConfusionTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
+sampler2D Confusion { Texture = AFX_ConfusionTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 
 int GetSampleSize() {
     switch(_BokehSize) {
@@ -104,14 +104,14 @@ float4 PS_Bokeh(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
 
 technique AFX_DepthOfField < ui_label = "Depth Of Field"; ui_tooltip = "(HDR/LDR) Customize the focus of the screen."; > {
     pass {
-        RenderTarget = ConfusionTex;
+        RenderTarget = AFX_ConfusionTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Confusion;
     }
 
     pass {
-        RenderTarget = DepthOfFieldTex;
+        RenderTarget = AFX_DepthOfFieldTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Bokeh;

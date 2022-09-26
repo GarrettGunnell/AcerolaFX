@@ -64,8 +64,8 @@ uniform int _DepthCutoff <
     ui_tooltip = "Distance at which depth is masked by the frame.";
 > = 0;
 
-texture2D FramingTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Framing { Texture = FramingTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_FramingTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D Framing { Texture = AFX_FramingTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Framing, uv).rgba; }
 
 float4 PS_Framing(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -90,7 +90,7 @@ float4 PS_Framing(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 technique AFX_Framing < ui_label = "Framing"; ui_tooltip = "Overlay a frame for composition."; > {
     pass {
-        RenderTarget = FramingTex;
+        RenderTarget = AFX_FramingTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Framing;

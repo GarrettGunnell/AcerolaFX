@@ -86,9 +86,9 @@ uniform float _DepthCurve <
 # define AFX_SECTORS 8
 #endif
 
-texture2D KuwaharaFilterTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D KuwaharaFilter { Texture = KuwaharaFilterTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_KuwaharaFilter { Texture = KuwaharaFilterTex; };
+texture2D AFX_KuwaharaFilterTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D KuwaharaFilter { Texture = AFX_KuwaharaFilterTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_KuwaharaFilter { Texture = AFX_KuwaharaFilterTex; };
 void CS_EndPass(uint3 tid : SV_DISPATCHTHREADID) { tex2Dstore(Common::s_AcerolaBuffer, tid.xy, tex2Dfetch(KuwaharaFilter, tid.xy)); }
 
 /* Basic Kuwahara Filter */
@@ -142,10 +142,10 @@ float gaussian(float sigma, float2 pos) {
     return (1.0f / (2.0f * AFX_PI * sigma * sigma)) * exp(-((pos.x * pos.x + pos.y * pos.y) / (2.0f * sigma * sigma)));
 }
 
-texture2D SectorsTex { Width = 32; Height = 32; Format = R16F; };
-sampler2D Sectors { Texture = SectorsTex; };
-texture2D WeightsTex { Width = 32; Height = 32; Format = R16F; };
-sampler2D K0 { Texture = WeightsTex; };
+texture2D AFX_SectorsTex { Width = 32; Height = 32; Format = R16F; };
+sampler2D Sectors { Texture = AFX_SectorsTex; };
+texture2D AFX_WeightsTex { Width = 32; Height = 32; Format = R16F; };
+sampler2D K0 { Texture = AFX_WeightsTex; };
 
 float PS_CalculateSectors(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     int N = AFX_SECTORS;
@@ -231,15 +231,15 @@ void Generalized(in float2 uv, in float depth, out float4 output) {
 
 /* Anisotropic Kuwahara Filter */
 
-texture2D StructureTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D StructureTensor { Texture = StructureTensorTex; };
-storage2D s_StructureTensor { Texture = StructureTensorTex; };
-texture2D BlurredTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D BlurredTensor { Texture = BlurredTensorTex; };
-storage2D s_BlurredTensor { Texture = BlurredTensorTex; };
-texture2D TFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D TFM { Texture = TFMTex; };
-storage2D s_TFM { Texture = TFMTex; };
+texture2D AFX_StructureTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D StructureTensor { Texture = AFX_StructureTensorTex; };
+storage2D s_StructureTensor { Texture = AFX_StructureTensorTex; };
+texture2D AFX_BlurredTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D BlurredTensor { Texture = AFX_BlurredTensorTex; };
+storage2D s_BlurredTensor { Texture = AFX_BlurredTensorTex; };
+texture2D AFX_TFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D TFM { Texture = AFX_TFMTex; };
+storage2D s_TFM { Texture = AFX_TFMTex; };
 
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
@@ -448,14 +448,14 @@ void CS_KuwaharaFilter(uint3 tid : SV_DISPATCHTHREADID) {
 
 technique AFX_SetupKuwahara < hidden = true; enabled = true; timeout = 1; > {
     pass GenerateSectors {
-        RenderTarget = SectorsTex;
+        RenderTarget = AFX_SectorsTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_CalculateSectors;
     }
 
     pass GaussianFilter {
-        RenderTarget = WeightsTex;
+        RenderTarget = AFX_WeightsTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_GaussianFilterSectors;

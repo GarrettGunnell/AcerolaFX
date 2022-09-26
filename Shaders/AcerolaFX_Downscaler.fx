@@ -6,25 +6,25 @@ uniform bool _Point <
 > = false;
 
 #if AFX_NUM_DOWNSCALES == 2
- #define DownscaleTex DownScale::QuarterTex
+ #define AFX_DownscaleTex DownScale::QuarterTex
 #elif AFX_NUM_DOWNSCALES == 3
- #define DownscaleTex DownScale::EighthTex
+ #define AFX_DownscaleTex DownScale::EighthTex
 #elif AFX_NUM_DOWNSCALES == 4
- #define DownscaleTex DownScale::SixteenthTex
+ #define AFX_DownscaleTex DownScale::SixteenthTex
 #elif AFX_NUM_DOWNSCALES == 5
- #define DownscaleTex DownScale::ThirtySecondthTex
+ #define AFX_DownscaleTex DownScale::ThirtySecondthTex
 #elif AFX_NUM_DOWNSCALES == 6
- #define DownscaleTex DownScale::SixtyFourthTex
+ #define AFX_DownscaleTex DownScale::SixtyFourthTex
 #elif AFX_NUM_DOWNSCALES == 7
- #define DownscaleTex DownScale::OneTwentyEighthTex
+ #define AFX_DownscaleTex DownScale::OneTwentyEighthTex
 #elif AFX_NUM_DOWNSCALES == 8
- #define DownscaleTex DownScale::TwoFiftySixthTex
+ #define AFX_DownscaleTex DownScale::TwoFiftySixthTex
 #else
- #define DownscaleTex DownScale::HalfTex
+ #define AFX_DownscaleTex DownScale::HalfTex
 #endif
 
-sampler2D DownscalePoint { Texture = DownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-sampler2D Downscale { Texture = DownscaleTex; };
+sampler2D DownscalePoint { Texture = AFX_DownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Downscale { Texture = AFX_DownscaleTex; };
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Common::AcerolaBuffer, uv); }
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     if (_Point) return tex2D(DownscalePoint, uv);
@@ -34,7 +34,7 @@ float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 technique AFX_Downscaler < ui_label = "Downscaler"; ui_tooltip = "(HDR) Downscale the render."; > {
     pass {
-        RenderTarget = DownscaleTex;
+        RenderTarget = AFX_DownscaleTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Downscale;

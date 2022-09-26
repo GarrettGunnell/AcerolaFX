@@ -148,8 +148,8 @@ float3 Prefilter(float3 col) {
     return col * contribution;
 }
 
-texture2D BloomTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Bloom { Texture = BloomTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_BloomTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D Bloom { Texture = AFX_BloomTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Bloom, uv).rgba; }
 
 float4 PS_Prefilter(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -360,7 +360,7 @@ technique AFX_Bloom  <ui_label = "Bloom"; ui_tooltip = "(HDR) Blend the brighter
     #endif
 
     pass Blend {
-        RenderTarget = BloomTex;
+        RenderTarget = AFX_BloomTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Blend;

@@ -83,8 +83,8 @@ float GetBayer8(int x, int y) {
 #define AFX_WIDTH BUFFER_WIDTH / PWRTWO(AFX_DOWNSCALE_FACTOR)
 #define AFX_HEIGHT BUFFER_HEIGHT / PWRTWO(AFX_DOWNSCALE_FACTOR)
 
-texture2D DitherTex < pooled = true; > { Width = AFX_WIDTH; Height = AFX_HEIGHT; Format = RGBA16F; }; 
-sampler2D Dither { Texture = DitherTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_DitherTex < pooled = true; > { Width = AFX_WIDTH; Height = AFX_HEIGHT; Format = RGBA16F; }; 
+sampler2D Dither { Texture = AFX_DitherTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float4 UI = tex2D(ReShade::BackBuffer, uv);
@@ -114,7 +114,7 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
 
 technique AFX_Dither  <ui_label = "Dither"; ui_tooltip = "(LDR) Reduces the color palette of the image with ordered dithering."; >  {
     pass {
-        RenderTarget = DitherTex;
+        RenderTarget = AFX_DitherTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Downscale;

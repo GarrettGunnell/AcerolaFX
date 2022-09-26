@@ -234,6 +234,9 @@ void Generalized(in float2 uv, in float depth, out float4 output) {
 texture2D StructureTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D StructureTensor { Texture = StructureTensorTex; };
 storage2D s_StructureTensor { Texture = StructureTensorTex; };
+texture2D BlurredTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D BlurredTensor { Texture = BlurredTensorTex; };
+storage2D s_BlurredTensor { Texture = BlurredTensorTex; };
 texture2D TFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D TFM { Texture = TFMTex; };
 storage2D s_TFM { Texture = TFMTex; };
@@ -265,10 +268,10 @@ void CS_StructureTensor(uint3 tid : SV_DISPATCHTHREADID) {
         ) / 4.0f;
 
         tex2Dstore(s_StructureTensor, tid.xy, float4(dot(Sx, Sx), dot(Sy, Sy), dot(Sx, Sy), 1.0f));
-    } else tex2Dstore(s_StructureTensor, tid.xy, 0);
+    }
 }
 
-void CS_CalculateAnisotropy(uint3 tid : SV_DISPATCHTHREADID) {
+void CS_HorizontalBlurPass(uint3 tid : SV_DISPATCHTHREADID) {
     if (_Filter == 2) {
         int kernelRadius = _BlurRadius;
 
@@ -283,8 +286,19 @@ void CS_CalculateAnisotropy(uint3 tid : SV_DISPATCHTHREADID) {
             kernelSum += gauss;
         }
 
+        tex2Dstore(s_BlurredTensor, tid.xy, col / kernelSum);
+    }
+}
+
+void CS_CalculateAnisotropy(uint3 tid : SV_DISPATCHTHREADID) {
+    if (_Filter == 2) {
+        int kernelRadius = _BlurRadius;
+
+        float4 col = 0;
+        float kernelSum = 0.0f;
+
         for (int y = -kernelRadius; y <= kernelRadius; ++y) {
-            float4 c = tex2Dfetch(StructureTensor, tid.xy + float2(0, y));
+            float4 c = tex2Dfetch(BlurredTensor, tid.xy + float2(0, y));
             float gauss = gaussian(2.0f, y);
 
             col += c * gauss;
@@ -303,7 +317,7 @@ void CS_CalculateAnisotropy(uint3 tid : SV_DISPATCHTHREADID) {
         float A = (lambda1 + lambda2 > 0.0f) ? (lambda1 - lambda2) / (lambda1 + lambda2) : 0.0f;
         
         tex2Dstore(s_TFM, tid.xy, float4(t, phi, A));
-    } else tex2Dstore(s_TFM, tid.xy, 0);
+    }
 }
 
 void Anisotropic(in float2 uv, in float depth, out float4 output) {
@@ -451,6 +465,12 @@ technique AFX_SetupKuwahara < hidden = true; enabled = true; timeout = 1; > {
 technique AFX_KuwaharaFilter < ui_label = "Kuwahara Filter"; ui_tooltip = "(LDR)(VERY HIGH PERFORMANCE COST) Applies a Kuwahara filter to the screen."; > {
     pass {
         ComputeShader = CS_StructureTensor<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
+    }
+
+    pass {
+        ComputeShader = CS_HorizontalBlurPass<8, 8>;
         DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
         DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }

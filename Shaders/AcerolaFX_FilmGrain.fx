@@ -16,7 +16,8 @@ uniform uint _BlendMode <
                "Multiply\0"
                "Screen\0"
                "Color Dodge\0"
-               "Color Burn\0";
+               "Color Burn\0"
+               "Overlay\0";
 > = 2;
 
 uniform bool _AnimateNoise <
@@ -27,6 +28,8 @@ uniform bool _AnimateNoise <
 
 uniform uint _KernelSize <
     ui_min = 0; ui_max = 5;
+    ui_category_closed = true;
+    ui_category = "Blur Settings";
     ui_type = "slider";
     ui_label = "Gaussian Kernel Size";
     ui_tooltip = "Size of the gaussian kernel";
@@ -34,6 +37,8 @@ uniform uint _KernelSize <
 
 uniform float _Sigma <
     ui_min = 0.0; ui_max = 5.0f;
+    ui_category_closed = true;
+    ui_category = "Blur Settings";
     ui_type = "drag";
     ui_label = "Blur Strength";
     ui_tooltip = "Sigma of the gaussian function";
@@ -71,7 +76,7 @@ float hash(uint n) {
 }
 
 void CS_GenerateNoise(uint3 tid : SV_DISPATCHTHREADID) {
-    uint seed = tid.x + BUFFER_WIDTH * tid.y + BUFFER_WIDTH * BUFFER_HEIGHT + frameCount * deltaTime * _AnimateNoise;
+    uint seed = tid.x + AFX_NOISETEX_WIDTH * tid.y + AFX_NOISETEX_WIDTH * AFX_NOISETEX_HEIGHT + frameCount * deltaTime * _AnimateNoise;
     tex2Dstore(s_Noise, tid.xy, hash(seed));
 }
 
@@ -123,7 +128,8 @@ float4 BlendNoise(float4 a, float b) {
     if (_BlendMode == 2) return a * b;
     if (_BlendMode == 3) return 1.0f - (1.0f - a) * (1.0f - b);
     if (_BlendMode == 4) return a / (1.0f - (b - 0.001f));
-    return 1.0f - ((1.0f - a) / (b + 0.001));
+    if (_BlendMode == 5) return 1.0f - ((1.0f - a) / (b + 0.001));
+    else return (Common::Luminance(a.rgb) < 0.5) ? 2.0f * a * b : 1.0f - 2.0f * (1.0f - a) * (1.0f - b);
 }
 
 float4 PS_FilmGrain(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -136,20 +142,20 @@ float4 PS_FilmGrain(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 technique AFX_FilmGrain < ui_label = "Film Grain"; ui_tooltip = "(HDR/LDR) Applies film grain to the render."; > {
     pass {
         ComputeShader = CS_GenerateNoise<8, 8>;
-        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
-        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
+        DispatchSizeX = (AFX_NOISETEX_WIDTH + 7) / 8;
+        DispatchSizeY = (AFX_NOISETEX_HEIGHT + 7) / 8;
     }
 
     pass {
         ComputeShader = CS_FirstBlurPass<8, 8>;
-        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
-        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
+        DispatchSizeX = (AFX_NOISETEX_WIDTH + 7) / 8;
+        DispatchSizeY = (AFX_NOISETEX_HEIGHT + 7) / 8;
     }
 
     pass {
         ComputeShader = CS_SecondBlurPass<8, 8>;
-        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
-        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
+        DispatchSizeX = (AFX_NOISETEX_WIDTH + 7) / 8;
+        DispatchSizeY = (AFX_NOISETEX_HEIGHT + 7) / 8;
     }
 
     pass {

@@ -7,12 +7,24 @@ uniform float _GrainIntensity <
     ui_tooltip = "Adjust strength of the grain.";
 > = 0.15f;
 
+uniform uint _BlendMode <
+    ui_type = "combo";
+    ui_label = "Blend Mode";
+    ui_tooltip = "How to blend the noise";
+    ui_items = "Add\0"
+               "Subtract\0"
+               "Multiply\0"
+               "Screen\0"
+               "Color Dodge\0"
+               "Color Burn\0";
+> = 2;
+
 texture2D AFX_FilmGrainTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D FilmGrain { Texture = AFX_FilmGrainTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(FilmGrain, uv).rgba; }
 
 texture2D AFX_NoiseGrainTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
-sampler2D Noise { Texture = AFX_NoiseGrainTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Noise { Texture = AFX_NoiseGrainTex; };
 storage2D s_Noise { Texture = AFX_NoiseGrainTex; };
 
 float hash(uint n) {
@@ -22,17 +34,25 @@ float hash(uint n) {
     return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
 }
 
-
 void CS_GenerateNoise(uint3 tid : SV_DISPATCHTHREADID) {
     uint seed = tid.x + BUFFER_WIDTH * tid.y + BUFFER_WIDTH * BUFFER_HEIGHT;
     tex2Dstore(s_Noise, tid.xy, hash(seed));
+}
+
+float4 BlendNoise(float4 a, float b) {
+    if (_BlendMode == 0) return a + b;
+    if (_BlendMode == 1) return a - b;
+    if (_BlendMode == 2) return a * b;
+    if (_BlendMode == 3) return 1.0f - (1.0f - a) * (1.0f - b);
+    if (_BlendMode == 4) return a / (1.0f - (b - 0.001f));
+    return 1.0f - ((1.0f - a) / (b + 0.001));
 }
 
 float4 PS_FilmGrain(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 c = tex2D(Common::AcerolaBuffer, uv);
     float noise = tex2D(Noise, uv).r;
 
-    return lerp(c, c * noise, _GrainIntensity);
+    return lerp(c, BlendNoise(c, noise), _GrainIntensity);
 }
 
 technique AFX_FilmGrain < ui_label = "Film Grain"; ui_tooltip = "(HDR/LDR) Applies film grain to the render."; > {

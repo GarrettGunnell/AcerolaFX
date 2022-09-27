@@ -19,6 +19,15 @@ uniform uint _BlendMode <
                "Color Burn\0";
 > = 2;
 
+uniform bool _AnimateNoise <
+    ui_label = "Animate";
+    ui_type = "drag";
+    ui_tooltip = "Animate the noise.";
+> = false;
+
+uniform float deltaTime < source = "frametime"; >;
+uniform int frameCount < source = "framecount"; >;
+
 #ifndef AFX_NOISE_DOWNSCALE_FACTOR
     #define AFX_NOISE_DOWNSCALE_FACTOR 0
 #endif
@@ -44,7 +53,7 @@ float hash(uint n) {
 }
 
 void CS_GenerateNoise(uint3 tid : SV_DISPATCHTHREADID) {
-    uint seed = tid.x + BUFFER_WIDTH * tid.y + BUFFER_WIDTH * BUFFER_HEIGHT;
+    uint seed = tid.x + BUFFER_WIDTH * tid.y + BUFFER_WIDTH * BUFFER_HEIGHT + frameCount * deltaTime * _AnimateNoise;
     tex2Dstore(s_Noise, tid.xy, hash(seed));
 }
 

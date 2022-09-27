@@ -1,11 +1,11 @@
 #include "AcerolaFX_Common.fxh"
 
-uniform float _Gamma <
-    ui_min = 0.0f; ui_max = 5.0f;
-    ui_label = "Gamma";
+uniform float _GrainIntensity <
+    ui_min = 0.0f; ui_max = 2.0f;
+    ui_label = "Grain Intensity";
     ui_type = "drag";
-    ui_tooltip = "Adjust gamma correction.";
-> = 1.0f;
+    ui_tooltip = "Adjust strength of the grain.";
+> = 0.15f;
 
 texture2D AFX_FilmGrainTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D FilmGrain { Texture = AFX_FilmGrainTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -19,7 +19,7 @@ float hash(uint n) {
     // integer hash copied from Hugo Elias
 	n = (n << 13U) ^ n;
     n = n * (n * n * 15731U + 0x789221U) + 0x1376312589U;
-    return float( n & uint(0x7fffffffU))/float(0x7fffffff);
+    return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
 }
 
 
@@ -32,10 +32,10 @@ float4 PS_FilmGrain(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     float4 c = tex2D(Common::AcerolaBuffer, uv);
     float noise = tex2D(Noise, uv).r;
 
-    return c * noise;
+    return lerp(c, c * noise, _GrainIntensity);
 }
 
-technique AFX_FilmGrain < ui_label = "Film Grain"; ui_tooltip = "Applies film grain to the render."; > {
+technique AFX_FilmGrain < ui_label = "Film Grain"; ui_tooltip = "(HDR/LDR) Applies film grain to the render."; > {
     pass {
         ComputeShader = CS_GenerateNoise<8, 8>;
         DispatchSizeX = (BUFFER_WIDTH + 7) / 8;

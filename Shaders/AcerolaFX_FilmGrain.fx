@@ -19,11 +19,20 @@ uniform uint _BlendMode <
                "Color Burn\0";
 > = 2;
 
+#ifndef AFX_NOISE_DOWNSCALE_FACTOR
+    #define AFX_NOISE_DOWNSCALE_FACTOR 0
+#endif
+
+#define PWRTWO(EXP) (1 << (EXP))
+#define AFX_NOISETEX_WIDTH BUFFER_WIDTH / PWRTWO(AFX_NOISE_DOWNSCALE_FACTOR)
+#define AFX_NOISETEX_HEIGHT BUFFER_HEIGHT / PWRTWO(AFX_NOISE_DOWNSCALE_FACTOR)
+
+
 texture2D AFX_FilmGrainTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D FilmGrain { Texture = AFX_FilmGrainTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(FilmGrain, uv).rgba; }
 
-texture2D AFX_NoiseGrainTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
+texture2D AFX_NoiseGrainTex { Width = AFX_NOISETEX_WIDTH; Height = AFX_NOISETEX_HEIGHT; Format = R32F; }; 
 sampler2D Noise { Texture = AFX_NoiseGrainTex; };
 storage2D s_Noise { Texture = AFX_NoiseGrainTex; };
 

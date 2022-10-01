@@ -369,48 +369,50 @@ void Anisotropic(in float2 uv, in float depth, out float4 output) {
         [loop]
         for (int x = -max_x; x <= max_x; ++x) {
             float2 v = mul(SR, float2(x, y));
-            float3 c = tex2Dfetch(Common::AcerolaBuffer, uv + float2(x, y)).rgb;
-            float sum = 0;
-            float w[8];
-            float z, vxx, vyy;
-            
-            /* Calculate Polynomial Weights */
-            vxx = zeta - eta * v.x * v.x;
-            vyy = zeta - eta * v.y * v.y;
-            z = max(0, v.y + vxx); 
-            w[0] = z * z;
-            sum += w[0];
-            z = max(0, -v.x + vyy); 
-            w[2] = z * z;
-            sum += w[2];
-            z = max(0, -v.y + vxx); 
-            w[4] = z * z;
-            sum += w[4];
-            z = max(0, v.x + vyy); 
-            w[6] = z * z;
-            sum += w[6];
-            v = sqrt(2.0f) / 2.0f * float2(v.x - v.y, v.x + v.y);
-            vxx = zeta - eta * v.x * v.x;
-            vyy = zeta - eta * v.y * v.y;
-            z = max(0, v.y + vxx); 
-            w[1] = z * z;
-            sum += w[1];
-            z = max(0, -v.x + vyy); 
-            w[3] = z * z;
-            sum += w[3];
-            z = max(0, -v.y + vxx); 
-            w[5] = z * z;
-            sum += w[5];
-            z = max(0, v.x + vyy); 
-            w[7] = z * z;
-            sum += w[7];
-            
-            float g = exp(-3.125f * dot(v,v)) / sum;
-            
-            for (int k = 0; k < 8; ++k) {
-                float wk = w[k] * g;
-                m[k] += float4(c * wk, wk);
-                s[k] += c * c * wk;
+            if (dot(v, v) <= 0.25f) {
+                float3 c = tex2Dfetch(Common::AcerolaBuffer, uv + float2(x, y)).rgb;
+                float sum = 0;
+                float w[8];
+                float z, vxx, vyy;
+                
+                /* Calculate Polynomial Weights */
+                vxx = zeta - eta * v.x * v.x;
+                vyy = zeta - eta * v.y * v.y;
+                z = max(0, v.y + vxx); 
+                w[0] = z * z;
+                sum += w[0];
+                z = max(0, -v.x + vyy); 
+                w[2] = z * z;
+                sum += w[2];
+                z = max(0, -v.y + vxx); 
+                w[4] = z * z;
+                sum += w[4];
+                z = max(0, v.x + vyy); 
+                w[6] = z * z;
+                sum += w[6];
+                v = sqrt(2.0f) / 2.0f * float2(v.x - v.y, v.x + v.y);
+                vxx = zeta - eta * v.x * v.x;
+                vyy = zeta - eta * v.y * v.y;
+                z = max(0, v.y + vxx); 
+                w[1] = z * z;
+                sum += w[1];
+                z = max(0, -v.x + vyy); 
+                w[3] = z * z;
+                sum += w[3];
+                z = max(0, -v.y + vxx); 
+                w[5] = z * z;
+                sum += w[5];
+                z = max(0, v.x + vyy); 
+                w[7] = z * z;
+                sum += w[7];
+                
+                float g = exp(-3.125f * dot(v,v)) / sum;
+                
+                for (int k = 0; k < 8; ++k) {
+                    float wk = w[k] * g;
+                    m[k] += float4(c * wk, wk);
+                    s[k] += c * c * wk;
+                }
             }
         }
     }

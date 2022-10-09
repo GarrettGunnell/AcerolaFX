@@ -12,6 +12,15 @@ namespace Common {
     sampler2D AcerolaBufferLinear { Texture = AcerolaBufferTex; };
     storage2D s_AcerolaBuffer { Texture = AcerolaBufferTex; };
 
+    sampler2D AcerolaBufferMirror { Texture = AcerolaBufferTex; AddressU = MIRROR; AddressV = MIRROR; AddressW = MIRROR; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+    sampler2D AcerolaBufferMirrorLinear { Texture = AcerolaBufferTex; AddressU = MIRROR; AddressV = MIRROR; AddressW = MIRROR; };
+    sampler2D AcerolaBufferWrap { Texture = AcerolaBufferTex; AddressU = WRAP; AddressV = WRAP; AddressW = WRAP; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+    sampler2D AcerolaBufferWrapLinear { Texture = AcerolaBufferTex; AddressU = WRAP; AddressV = WRAP; AddressW = WRAP; };
+    sampler2D AcerolaBufferRepeat { Texture = AcerolaBufferTex; AddressU = REPEAT; AddressV = REPEAT; AddressW = REPEAT; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+    sampler2D AcerolaBufferRepeatLinear { Texture = AcerolaBufferTex; AddressU = REPEAT; AddressV = REPEAT; AddressW = REPEAT; };
+    sampler2D AcerolaBufferBorder { Texture = AcerolaBufferTex; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+    sampler2D AcerolaBufferBorderLinear { Texture = AcerolaBufferTex; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; };
+
     float Luminance(float3 color) {
         return max(0.00001f, dot(color, float3(0.2127f, 0.7152f, 0.0722f)));
     }

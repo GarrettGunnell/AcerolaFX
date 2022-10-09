@@ -30,6 +30,22 @@ uniform float _NormalThreshold <
     ui_tooltip = "Adjust the threshold for normal differences to count as an edge.";
 > = 1.0f;
 
+uniform int _DepthCutoff <
+    ui_min = 0; ui_max = 1000;
+    ui_category = "Depth Settings";
+    ui_category_closed = true;
+    ui_label = "Depth Cutoff";
+    ui_type = "slider";
+    ui_tooltip = "Distance at which depth is masked by the frame.";
+> = 0;
+
+uniform bool _UseFogFalloff <
+    ui_category = "Depth Settings";
+    ui_category_closed = true;
+    ui_label = "Use Fog Falloff";
+    ui_tooltip = "Enable to use the depth falloff logic below akin to fog.";
+> = true;
+
 uniform float _EdgeFalloff <
     ui_category = "Depth Settings";
     ui_category_closed = true;
@@ -117,7 +133,7 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             output = 1.0f;
     }
 
-    if (_EdgeFalloff > 0.0f) {
+    if (_EdgeFalloff > 0.0f && _UseFogFalloff) {
         float viewDistance = c.w * 1000;
 
         float falloffFactor = 0.0f;
@@ -126,6 +142,10 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
         falloffFactor = exp2(-falloffFactor);
 
         output = lerp(0.0f, output, saturate(falloffFactor));
+    }
+    if (_DepthCutoff > 0.0f) {
+        if (c.w * 1000 > _DepthCutoff)
+            output = 0.0f;
     }
 
     return float4(lerp(col.rgb, _EdgeColor.rgb, saturate(output)), 1.0f);

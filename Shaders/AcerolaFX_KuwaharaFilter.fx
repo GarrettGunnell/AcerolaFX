@@ -365,7 +365,7 @@ void Anisotropic(in float2 uv, in float depth, out float4 output) {
     }
 
     [loop]
-    for (int y = 0; y <= max_y; ++y) {
+    for (int y = -max_y; y <= max_y; ++y) {
         [loop]
         for (int x = -max_x; x <= max_x; ++x) {
             float2 v = mul(SR, float2(x, y));

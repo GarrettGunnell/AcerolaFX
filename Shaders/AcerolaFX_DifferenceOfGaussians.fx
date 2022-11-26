@@ -28,6 +28,11 @@ uniform float _P <
     ui_tooltip = "Adjust sharpness of the two gaussian blurs to bring out edge lines.";
 > = 1.0f;
 
+uniform bool _SmoothEdges <
+    ui_label = "Smooth Edges";
+    ui_tooltip = "Whether or not to apply anti aliasing to the edges of the image.";
+> = true;
+
 uniform float _SigmaA <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Edge Smooth Deviation";
@@ -251,47 +256,51 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 }
 
 float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    
-    float kernelSize = _SigmaA * 2;
+    if (_SmoothEdges) {
+        float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        
+        float kernelSize = _SigmaA * 2;
 
-    float3 G = 0.0f;
-    float w = 0.0f;
+        float3 G = 0.0f;
+        float w = 0.0f;
 
-    float2 v = tex2D(DOGTFM, uv).xy * texelSize;
-    float2 stepSize = 1.0f;
+        float2 v = tex2D(DOGTFM, uv).xy * texelSize;
+        float2 stepSize = 1.0f;
 
-    float2 st0 = uv;
-    float2 v0 = v;
+        float2 st0 = uv;
+        float2 v0 = v;
 
-    [loop]
-    for (int d = 0; d < kernelSize; ++d) {
-        st0 += v0 * stepSize.x;
-        float3 c = tex2D(DifferenceOfGaussians, st0).rgb;
-        float gauss1 = gaussian(_SigmaA, d);
+        [loop]
+        for (int d = 0; d < kernelSize; ++d) {
+            st0 += v0 * stepSize.x;
+            float3 c = tex2D(DifferenceOfGaussians, st0).rgb;
+            float gauss1 = gaussian(_SigmaA, d);
 
-        G += gauss1 * c;
-        w += gauss1;
+            G += gauss1 * c;
+            w += gauss1;
 
-        v0 = tex2D(DOGTFM, uv).xy * texelSize;
+            v0 = tex2D(DOGTFM, uv).xy * texelSize;
+        }
+
+        float2 st1 = uv;
+        float2 v1 = v;
+
+        [loop]
+        for (int d = 0; d < kernelSize; ++d) {
+            st1 -= v1 * stepSize.y;
+            float3 c = tex2D(DifferenceOfGaussians, st1).rgb;
+            float gauss1 = gaussian(_SigmaA, d);
+
+            G += gauss1 * c;
+            w += gauss1;
+
+            v1 = tex2D(DOGTFM, uv).xy * texelSize;
+        }
+
+        return float4(G /= w, 1.0f);
+    } else {
+        return tex2D(DifferenceOfGaussians, uv);
     }
-
-    float2 st1 = uv;
-    float2 v1 = v;
-
-    [loop]
-    for (int d = 0; d < kernelSize; ++d) {
-        st1 -= v1 * stepSize.y;
-        float3 c = tex2D(DifferenceOfGaussians, st1).rgb;
-        float gauss1 = gaussian(_SigmaA, d);
-
-        G += gauss1 * c;
-        w += gauss1;
-
-        v1 = tex2D(DOGTFM, uv).xy * texelSize;
-    }
-
-    return float4(G /= w, 1.0f);
 }
 
 float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

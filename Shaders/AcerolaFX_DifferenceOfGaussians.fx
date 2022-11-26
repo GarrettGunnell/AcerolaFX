@@ -3,7 +3,7 @@
 uniform bool _UseFlow <
     ui_label = "Use Flow";
     ui_tooltip = "Whether or not to use the flow difference of gaussians or not.";
-> = false;
+> = true;
 
 uniform float _SigmaC <
     ui_category_closed = true;
@@ -30,6 +30,12 @@ uniform float2 _LineIntegralStepSize <
     ui_type = "drag";
     ui_tooltip = "Increase distance between smoothing samples for more painterly visuals.";
 > = 1.0f;
+
+uniform bool _CalcDiffBeforeConvolving <
+    ui_category_closed = true;
+    ui_category = "Edge Tangent Flow Settings";
+    ui_label = "Calculate Difference Before Smoothing";
+> = true;
 
 uniform float _SigmaE <
     ui_category_closed = true;
@@ -326,7 +332,7 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
             float gauss1 = gaussian(_SigmaM, d);
 
 
-            if (true) {
+            if (_CalcDiffBeforeConvolving) {
                 G.r += gauss1 * c.b;
                 w.x += gauss1;
             } else {
@@ -352,7 +358,7 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
             float gauss1 = gaussian(_SigmaM, d);
 
 
-            if (true) {
+            if (_CalcDiffBeforeConvolving) {
                 G.r += gauss1 * c.b;
                 w.x += gauss1;
             } else {
@@ -370,7 +376,7 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
         G /= max(0.000001f, w);
 
-        if (true) {
+        if (_CalcDiffBeforeConvolving) {
             D = G.x;
         } else {
             D = (1 + _P) * (G.r * 100.0f) - _P * (G.g * 100.0f);

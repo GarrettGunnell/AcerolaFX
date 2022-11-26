@@ -66,6 +66,20 @@ uniform int _BlendMode <
                "Two Point Interpolate\0";
 > = 0;
 
+uniform float3 _MinColor <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Min Color";
+    ui_type = "color";
+    ui_tooltip = "Set minimum color.";
+> = 0.0f;
+
+uniform float3 _MaxColor <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Max Color";
+    ui_type = "color";
+    ui_tooltip = "Set maximum color.";
+> = 1.0f;
+
 uniform float _BlendStrength <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Blend Strength";
@@ -159,16 +173,16 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float D = tex2D(DifferenceOfGaussians, uv).r * _TermStrength;
 
-    float4 output = 0.0f;
+    float4 output = 1.0f;
     if (_BlendMode == 0)
-        output = D;
+        output.rgb = lerp(_MinColor, _MaxColor, D);
     if (_BlendMode == 1)
-        output = lerp(0.0f, col, D);
+        output.rgb = lerp(_MinColor, col.rgb, D);
     if (_BlendMode == 2) {
         if (D.r < 0.5f)
-            output = lerp(0.0f, col, D * 2.0f);
+            output.rgb = lerp(_MinColor, col.rgb, D * 2.0f);
         else
-            output = lerp(col, 1.0f, (D - 0.5f) * 2.0f);
+            output.rgb = lerp(col.rgb, _MaxColor, (D - 0.5f) * 2.0f);
     }
 
     return saturate(lerp(col, output, _BlendStrength));

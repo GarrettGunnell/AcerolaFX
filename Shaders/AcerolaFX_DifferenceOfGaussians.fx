@@ -37,7 +37,6 @@ uniform int _Thresholds <
     ui_tooltip = "Adjust number of allowed difference values.";
 > = 1;
 
-
 uniform float _Threshold <
     ui_min = 0.0f; ui_max = 100.0f;
     ui_label = "White Point";
@@ -52,6 +51,13 @@ uniform float _Phi <
     ui_tooltip = "Adjust curve of hyperbolic tangent.";
 > = 1.0f;
 
+uniform int _BlendMode <
+    ui_type = "combo";
+    ui_label = "Blend Mode";
+    ui_items = "No Blend\0"
+               "Interpolate\0"
+               "Two Point Interpolate\0";
+> = 0;
 
 texture2D AFX_HorizontalBlurTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D HorizontalBlur { Texture = AFX_HorizontalBlurTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -59,7 +65,7 @@ texture2D AFX_DifferenceOfGaussiansTex { Width = BUFFER_WIDTH; Height = BUFFER_H
 sampler2D DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 texture2D AFX_LabTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Lab { Texture = AFX_LabTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-texture2D AFX_GaussiansBlendedTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+texture2D AFX_GaussiansBlendedTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler2D GaussiansBlended { Texture = AFX_GaussiansBlendedTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(GaussiansBlended, uv).rgba; }
 
@@ -139,7 +145,13 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float D = tex2D(DifferenceOfGaussians, uv).r;
 
-    return col * D;
+    float4 output = 0.0f;
+    if (_BlendMode == 0)
+        output = D;
+    if (_BlendMode == 1)
+        output = lerp(0.0f, col, D);
+
+    return output;
 }
 
 technique AFX_DifferenceOfGaussians < ui_label = "Difference Of Gaussians"; > {

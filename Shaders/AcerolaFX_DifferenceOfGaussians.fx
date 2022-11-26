@@ -1,11 +1,29 @@
 #include "AcerolaFX_Common.fxh"
 
+uniform bool _UseFlow <
+    ui_label = "Use Flow";
+    ui_tooltip = "Whether or not to use the flow difference of gaussians or not.";
+> = false;
+
 uniform float _SigmaC <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Tangent Flow Deviation";
     ui_type = "slider";
     ui_tooltip = "Adjust standard deviation for blurring of the structure tensor.";
 > = 2.0f;
+
+uniform float _SigmaM <
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Line Integral Deviation";
+    ui_type = "slider";
+    ui_tooltip = "Adjust standard deviation for smoothing of the flow difference of gaussians.";
+> = 2.0f;
+
+uniform float2 _LineIntegralStepSize <
+    ui_label = "Line Convolution Step Sizes";
+    ui_type = "drag";
+    ui_tooltip = "Increase distance between smoothing samples for more painterly visuals.";
+> = 1.0f;
 
 uniform float _SigmaE <
     ui_min = 0.0f; ui_max = 5.0f;
@@ -39,6 +57,12 @@ uniform float _SigmaA <
     ui_type = "slider";
     ui_tooltip = "Adjust standard deviation for gaussian blurring of edge lines.";
 > = 2.0f;
+
+uniform float2 _AntiAliasStepSize <
+    ui_label = "Edge Smoothing Step Sizes";
+    ui_type = "drag";
+    ui_tooltip = "Increase distance between smoothing samples for more painterly visuals.";
+> = 1.0f;
 
 
 uniform int _Thresholding <
@@ -197,41 +221,144 @@ float4 PS_HorizontalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : 
     float2 col = 0;
     float2 kernelSum = 0.0f;
 
-    for (int x = -kernelRadius; x <= kernelRadius; ++x) {
-        float c = tex2D(Lab, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
-        float gauss1 = gaussian(_SigmaE, x);
-        float gauss2 = gaussian(_SigmaE * _K, x);
+    float2 n = 0.0f;
+    float ds = 0.0f;
+    if (_UseFlow) {
+        float2 t = tex2D(DOGTFM, uv).xy;
+        n = float2(t.y, -t.x);
+        float2 nabs = abs(n);
+        ds = 1.0 / ((nabs.x > nabs.y) ? nabs.x : nabs.y);
+        n *= float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
-        col.r += c * gauss1;
-        kernelSum.r += gauss1;
+        col = tex2D(Lab, uv).xx;
+        kernelSum = 1.0f;
 
-        col.g += c * gauss2;
-        kernelSum.g += gauss2;
+        [loop]
+        for (int x = ds; x <= kernelRadius; ++x) {
+            float gauss1 = gaussian(_SigmaE, x);
+            float gauss2 = gaussian(_SigmaE * _K, x);
+
+            float c1 = tex2Dlod(Lab, float4(uv - x * n, 0, 0)).r;
+            float c2 = tex2Dlod(Lab, float4(uv + x * n, 0, 0)).r;
+
+            col.r += (c1 + c2) * gauss1;
+            kernelSum.x += 2.0f * gauss1;
+
+            col.g += (c1 + c2) * gauss2;
+            kernelSum.y +=  2.0f * gauss2;
+        }
+
+        col /= kernelSum;
+
+        return float4(col, (1 + _P) * (col.r * 100.0f) - _P * (col.g * 100.0f), 1.0f);
+    } else { // Normal DoG Blur Pass
+        for (int x = -kernelRadius; x <= kernelRadius; ++x) {
+            float c = tex2D(Lab, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
+            float gauss1 = gaussian(_SigmaE, x);
+            float gauss2 = gaussian(_SigmaE * _K, x);
+
+            col.r += c * gauss1;
+            kernelSum.r += gauss1;
+
+            col.g += c * gauss2;
+            kernelSum.g += gauss2;
+        }
+
+        return float4(col / kernelSum, 1.0f, 1.0f);
     }
-
-    return float4(col / kernelSum, 1.0f, 1.0f);
 }
 
 float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     int kernelRadius = _SigmaE * 2 > 1 ? _SigmaE * 2 : 1;
+    float D = 0.0f;
+    float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
-    float2 col = 0;
-    float2 kernelSum = 0.0f;
+    if (_UseFlow) {
+        kernelRadius = _SigmaM * 2 > 1 ? _SigmaM * 2 : 1;
 
-    for (int y = -kernelRadius; y <= kernelRadius; ++y) {
-        float c = tex2D(HorizontalBlur, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
-        float gauss1 = gaussian(_SigmaE, y);
-        float gauss2 = gaussian(_SigmaE * _K, y);
+        float2 G = 0.0f;
+        float2 w = 0.0f;
 
-        col.r += c * gauss1;
-        kernelSum.r += gauss1;
-        
-        col.g += c * gauss2;
-        kernelSum.g += gauss2;
+        float2 v = tex2D(DOGTFM, uv).xy * texelSize;
+        float2 stepSize = _LineIntegralStepSize;
+
+        float2 st0 = uv;
+        float2 v0 = v;
+
+        [loop]
+        for (int d = 0; d < kernelRadius; ++d) {
+            st0 += v0 * stepSize.x;
+            float3 c = tex2D(HorizontalBlur, st0).rgb;
+            float gauss1 = gaussian(_SigmaM, d);
+
+
+            if (true) {
+                G.r += gauss1 * c.b;
+                w.x += gauss1;
+            } else {
+                float gauss2 = gaussian(_SigmaM * _K, d);
+
+                G.r += gauss1 * c.r;
+                w.x += gauss1;
+
+                G.g += gauss2 * c.g;
+                w.y += gauss2;
+            }
+
+            v0 = tex2D(DOGTFM, st0).xy * texelSize;
+        }
+
+        float2 st1 = uv;
+        float2 v1 = v;
+
+        [loop]
+        for (int d = 0; d < kernelRadius; ++d) {
+            st1 -= v1 * stepSize.y;
+            float3 c = tex2D(HorizontalBlur, st1).rgb;
+            float gauss1 = gaussian(_SigmaM, d);
+
+
+            if (true) {
+                G.r += gauss1 * c.b;
+                w.x += gauss1;
+            } else {
+                float gauss2 = gaussian(_SigmaM * _K, d);
+
+                G.r += gauss1 * c.r;
+                w.x += gauss1;
+
+                G.g += gauss2 * c.g;
+                w.y += gauss2;
+            }
+
+            v1 = tex2D(DOGTFM, st1).xy * texelSize;
+        }
+
+        G /= max(0.000001f, w);
+
+        if (true) {
+            D = G.x;
+        } else {
+            D = (1 + _P) * (G.r * 100.0f) - _P * (G.g * 100.0f);
+        }
+    } else {
+        float2 col = 0;
+        float2 kernelSum = 0.0f;
+
+        for (int y = -kernelRadius; y <= kernelRadius; ++y) {
+            float c = tex2D(HorizontalBlur, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
+            float gauss1 = gaussian(_SigmaE, y);
+            float gauss2 = gaussian(_SigmaE * _K, y);
+
+            col.r += c * gauss1;
+            kernelSum.r += gauss1;
+            
+            col.g += c * gauss2;
+            kernelSum.g += gauss2;
+        }
+
+        D = (1 + _P) * (col.r * 100.0f) - _P * (col.g * 100.0f);
     }
-
-    float D = (1 + _P) * (col.r * 100.0f) - _P * (col.g * 100.0f);
-
     float4 output = D;
     if (_Thresholding == 0)
         output /= 100.0f;
@@ -265,7 +392,7 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
         float w = 0.0f;
 
         float2 v = tex2D(DOGTFM, uv).xy * texelSize;
-        float2 stepSize = 1.0f;
+        float2 stepSize = _AntiAliasStepSize;
 
         float2 st0 = uv;
         float2 v0 = v;

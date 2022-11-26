@@ -6,6 +6,8 @@ uniform bool _UseFlow <
 > = false;
 
 uniform float _SigmaC <
+    ui_category_closed = true;
+    ui_category = "Edge Tangent Flow Settings";
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Tangent Flow Deviation";
     ui_type = "slider";
@@ -13,6 +15,8 @@ uniform float _SigmaC <
 > = 2.0f;
 
 uniform float _SigmaM <
+    ui_category_closed = true;
+    ui_category = "Edge Tangent Flow Settings";
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Line Integral Deviation";
     ui_type = "slider";
@@ -20,12 +24,16 @@ uniform float _SigmaM <
 > = 2.0f;
 
 uniform float2 _LineIntegralStepSize <
+    ui_category_closed = true;
+    ui_category = "Edge Tangent Flow Settings";
     ui_label = "Line Convolution Step Sizes";
     ui_type = "drag";
     ui_tooltip = "Increase distance between smoothing samples for more painterly visuals.";
 > = 1.0f;
 
 uniform float _SigmaE <
+    ui_category_closed = true;
+    ui_category = "Difference Of Gaussians Settings";
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Difference Of Gaussians Deviation";
     ui_type = "slider";
@@ -33,6 +41,8 @@ uniform float _SigmaE <
 > = 2.0f;
 
 uniform float _K <
+    ui_category_closed = true;
+    ui_category = "Difference Of Gaussians Settings";
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Deviation Scale";
     ui_type = "drag";
@@ -40,6 +50,8 @@ uniform float _K <
 > = 1.6f;
 
 uniform float _P <
+    ui_category_closed = true;
+    ui_category = "Difference Of Gaussians Settings";
     ui_min = 0.0f; ui_max = 100.0f;
     ui_label = "Sharpness";
     ui_type = "slider";
@@ -52,6 +64,8 @@ uniform bool _SmoothEdges <
 > = true;
 
 uniform float _SigmaA <
+    ui_category_closed = true;
+    ui_category = "Anti Aliasing Settings";
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Edge Smooth Deviation";
     ui_type = "slider";
@@ -59,6 +73,8 @@ uniform float _SigmaA <
 > = 2.0f;
 
 uniform float2 _AntiAliasStepSize <
+    ui_category_closed = true;
+    ui_category = "Anti Aliasing Settings";
     ui_label = "Edge Smoothing Step Sizes";
     ui_type = "drag";
     ui_tooltip = "Increase distance between smoothing samples for more painterly visuals.";
@@ -66,6 +82,8 @@ uniform float2 _AntiAliasStepSize <
 
 
 uniform int _Thresholding <
+    ui_category_closed = true;
+    ui_category = "Threshold Settings";
     ui_type = "combo";
     ui_label = "Threshold Mode";
     ui_items = "No Threshold\0"
@@ -75,6 +93,8 @@ uniform int _Thresholding <
 > = 0;
 
 uniform int _Thresholds <
+    ui_category_closed = true;
+    ui_category = "Threshold Settings";
     ui_min = 1; ui_max = 16;
     ui_label = "Quantizer Step";
     ui_type = "slider";
@@ -82,6 +102,8 @@ uniform int _Thresholds <
 > = 1;
 
 uniform float _Threshold <
+    ui_category_closed = true;
+    ui_category = "Threshold Settings";
     ui_min = 0.0f; ui_max = 100.0f;
     ui_label = "White Point";
     ui_type = "slider";
@@ -89,6 +111,8 @@ uniform float _Threshold <
 > = 20.0f;
 
 uniform float _Phi <
+    ui_category_closed = true;
+    ui_category = "Threshold Settings";
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Soft Threshold";
     ui_type = "slider";
@@ -96,6 +120,8 @@ uniform float _Phi <
 > = 1.0f;
 
 uniform float _TermStrength <
+    ui_category_closed = true;
+    ui_category = "Blend Settings";
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Term Strength";
     ui_type = "drag";
@@ -103,6 +129,8 @@ uniform float _TermStrength <
 > = 1;
 
 uniform int _BlendMode <
+    ui_category_closed = true;
+    ui_category = "Blend Settings";
     ui_type = "combo";
     ui_label = "Blend Mode";
     ui_items = "No Blend\0"
@@ -111,6 +139,8 @@ uniform int _BlendMode <
 > = 0;
 
 uniform float3 _MinColor <
+    ui_category_closed = true;
+    ui_category = "Blend Settings";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Min Color";
     ui_type = "color";
@@ -118,6 +148,8 @@ uniform float3 _MinColor <
 > = 0.0f;
 
 uniform float3 _MaxColor <
+    ui_category_closed = true;
+    ui_category = "Blend Settings";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Max Color";
     ui_type = "color";
@@ -125,6 +157,8 @@ uniform float3 _MaxColor <
 > = 1.0f;
 
 uniform float _BlendStrength <
+    ui_category_closed = true;
+    ui_category = "Blend Settings";
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Blend Strength";
     ui_type = "drag";

@@ -22,7 +22,7 @@ uniform float _P <
 > = 1.0f;
 
 uniform float _Threshold <
-    ui_min = 0.0f; ui_max = 1.0f;
+    ui_min = 0.0f; ui_max = 100.0f;
     ui_label = "White Point";
     ui_type = "drag";
     ui_tooltip = "Adjust value at which difference is clamped to white.";
@@ -35,12 +35,21 @@ uniform float _Phi <
     ui_tooltip = "Adjust curve of hyperbolic tangent.";
 > = 1.0f;
 
+
+texture2D AFX_HorizontalBlurTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D HorizontalBlur { Texture = AFX_HorizontalBlurTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 texture2D AFX_DifferenceOfGaussiansTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_LabTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D Lab { Texture = AFX_LabTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(DifferenceOfGaussians, uv).rgba; }
 
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
+}
+
+float4 PS_RGBtoLAB(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    return float4(Common::rgb2lab(tex2D(Common::AcerolaBuffer, uv).rgb), 1.0f);
 }
 
 float4 PS_HorizontalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -50,7 +59,7 @@ float4 PS_HorizontalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : 
     float2 kernelSum = 0.0f;
 
     for (int x = -kernelRadius; x <= kernelRadius; ++x) {
-        float c = Common::Luminance(tex2D(Common::AcerolaBuffer, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb);
+        float c = tex2D(Lab, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
         float gauss1 = gaussian(_SigmaE, x);
         float gauss2 = gaussian(_SigmaE * _K, x);
 
@@ -71,7 +80,7 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     float2 kernelSum = 0.0f;
 
     for (int y = -kernelRadius; y <= kernelRadius; ++y) {
-        float c = Common::Luminance(tex2D(Common::AcerolaBuffer, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb);
+        float c = tex2D(HorizontalBlur, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
         float gauss1 = gaussian(_SigmaE, y);
         float gauss2 = gaussian(_SigmaE * _K, y);
 
@@ -82,7 +91,7 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
         kernelSum.g += gauss2;
     }
 
-    float D = (1 + _P) * col.r - _P * col.g;
+    float D = (1 + _P) * col.r * 100 - _P * col.g * 100;
 
     float4 output = 0.0f;
 
@@ -93,7 +102,14 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
 technique AFX_DifferenceOfGaussians < ui_label = "Difference Of Gaussians"; > {
     pass {
-        RenderTarget = AFX_DifferenceOfGaussiansTex;
+        RenderTarget = AFX_LabTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_RGBtoLAB;
+    }
+
+    pass {
+        RenderTarget = AFX_HorizontalBlurTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_HorizontalBlur;

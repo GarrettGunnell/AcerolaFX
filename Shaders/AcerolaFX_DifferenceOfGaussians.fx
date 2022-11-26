@@ -51,6 +51,13 @@ uniform float _Phi <
     ui_tooltip = "Adjust curve of hyperbolic tangent.";
 > = 1.0f;
 
+uniform float _TermStrength <
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Term Strength";
+    ui_type = "drag";
+    ui_tooltip = "Adjust scale of difference of gaussians output.";
+> = 1;
+
 uniform int _BlendMode <
     ui_type = "combo";
     ui_label = "Blend Mode";
@@ -58,6 +65,13 @@ uniform int _BlendMode <
                "Interpolate\0"
                "Two Point Interpolate\0";
 > = 0;
+
+uniform float _BlendStrength <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Blend Strength";
+    ui_type = "drag";
+    ui_tooltip = "Adjust strength of color blending.";
+> = 1;
 
 texture2D AFX_HorizontalBlurTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D HorizontalBlur { Texture = AFX_HorizontalBlurTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -143,15 +157,21 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
 float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float D = tex2D(DifferenceOfGaussians, uv).r;
+    float D = tex2D(DifferenceOfGaussians, uv).r * _TermStrength;
 
     float4 output = 0.0f;
     if (_BlendMode == 0)
         output = D;
     if (_BlendMode == 1)
         output = lerp(0.0f, col, D);
+    if (_BlendMode == 2) {
+        if (D.r < 0.5f)
+            output = lerp(0.0f, col, D * 2.0f);
+        else
+            output = lerp(col, 1.0f, (D - 0.5f) * 2.0f);
+    }
 
-    return output;
+    return saturate(lerp(col, output, _BlendStrength));
 }
 
 technique AFX_DifferenceOfGaussians < ui_label = "Difference Of Gaussians"; > {

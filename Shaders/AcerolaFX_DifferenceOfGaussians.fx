@@ -1,5 +1,12 @@
 #include "AcerolaFX_Common.fxh"
 
+uniform float _SigmaC <
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Tangent Flow Deviation";
+    ui_type = "slider";
+    ui_tooltip = "Adjust standard deviation for blurring of the structure tensor.";
+> = 2.0f;
+
 uniform float _SigmaE <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Difference Of Gaussians Deviation";
@@ -20,6 +27,14 @@ uniform float _P <
     ui_type = "slider";
     ui_tooltip = "Adjust sharpness of the two gaussian blurs to bring out edge lines.";
 > = 1.0f;
+
+uniform float _SigmaA <
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Edge Smooth Deviation";
+    ui_type = "slider";
+    ui_tooltip = "Adjust standard deviation for gaussian blurring of edge lines.";
+> = 2.0f;
+
 
 uniform int _Thresholding <
     ui_type = "combo";
@@ -89,8 +104,11 @@ uniform float _BlendStrength <
 
 texture2D AFX_HorizontalBlurTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D HorizontalBlur { Texture = AFX_HorizontalBlurTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_DOGTFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
+sampler2D DOGTFM { Texture = AFX_DOGTFMTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 texture2D AFX_DifferenceOfGaussiansTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; };
 texture2D AFX_LabTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Lab { Texture = AFX_LabTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 texture2D AFX_GaussiansBlendedTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
@@ -103,6 +121,69 @@ float gaussian(float sigma, float pos) {
 
 float4 PS_RGBtoLAB(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     return float4(Common::rgb2lab(tex2D(Common::AcerolaBuffer, uv).rgb), 1.0f);
+}
+
+void CS_StructureTensor(uint3 tid : SV_DISPATCHTHREADID) {
+    float2 d = float2(1, 1);
+
+    float3 Sx = (
+            1.0f * tex2Dfetch(Lab, tid.xy + float2(-d.x, -d.y)).rgb +
+            2.0f * tex2Dfetch(Lab, tid.xy + float2(-d.x,  0.0)).rgb +
+            1.0f * tex2Dfetch(Lab, tid.xy + float2(-d.x,  d.y)).rgb +
+            -1.0f * tex2Dfetch(Lab, tid.xy + float2(d.x, -d.y)).rgb +
+            -2.0f * tex2Dfetch(Lab, tid.xy + float2(d.x,  0.0)).rgb +
+            -1.0f * tex2Dfetch(Lab, tid.xy + float2(d.x,  d.y)).rgb
+    ) / 4.0f;
+
+    float3 Sy = (
+            1.0f * tex2Dfetch(Lab, tid.xy + float2(-d.x, -d.y)).rgb +
+            2.0f * tex2Dfetch(Lab, tid.xy + float2( 0.0, -d.y)).rgb +
+            1.0f * tex2Dfetch(Lab, tid.xy + float2( d.x, -d.y)).rgb +
+            -1.0f * tex2Dfetch(Lab, tid.xy + float2(-d.x, d.y)).rgb +
+            -2.0f * tex2Dfetch(Lab, tid.xy + float2( 0.0, d.y)).rgb +
+            -1.0f * tex2Dfetch(Lab, tid.xy + float2( d.x, d.y)).rgb
+    ) / 4.0f;
+
+    tex2Dstore(s_DifferenceOfGaussians, tid.xy, float4(dot(Sx, Sx), dot(Sy, Sy), dot(Sx, Sy), 1.0f));
+}
+
+float4 PS_TFMHorizontalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    int kernelRadius = max(1.0f, floor(_SigmaC * 2.45f));
+
+    float3 col = 0;
+    float kernelSum = 0.0f;
+
+    for (int x = -kernelRadius; x <= kernelRadius; ++x) {
+        float3 c = tex2D(DifferenceOfGaussians, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb;
+        float gauss = gaussian(_SigmaC, x);
+
+        col += c * gauss;
+        kernelSum += gauss;
+    }
+
+    return float4(col / kernelSum, 1.0f);
+}
+
+float4 PS_TFMVerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    int kernelRadius = max(1.0f, floor(_SigmaC * 2.45f));
+
+    float3 col = 0;
+    float kernelSum = 0.0f;
+
+    for (int x = -kernelRadius; x <= kernelRadius; ++x) {
+        float3 c = tex2D(HorizontalBlur, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb;
+        float gauss = gaussian(_SigmaC, x);
+
+        col += c * gauss;
+        kernelSum += gauss;
+    }
+
+    float3 g = col.rgb / kernelSum;
+
+    float lambda1 = 0.5f * (g.y + g.x + sqrt(g.y * g.y - 2.0f * g.x * g.y + g.x * g.x + 4.0 * g.z * g.z));
+    float2 d = float2(g.x - lambda1, g.z);
+
+    return length(d) ? float4(normalize(d), sqrt(lambda1), 1.0f) : float4(0.0f, 1.0f, 0.0f, 1.0f);
 }
 
 float4 PS_HorizontalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -169,9 +250,53 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     return saturate(output);
 }
 
+float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    
+    float kernelSize = _SigmaA * 2;
+
+    float3 G = 0.0f;
+    float w = 0.0f;
+
+    float2 v = tex2D(DOGTFM, uv).xy * texelSize;
+    float2 stepSize = 1.0f;
+
+    float2 st0 = uv;
+    float2 v0 = v;
+
+    [loop]
+    for (int d = 0; d < kernelSize; ++d) {
+        st0 += v0 * stepSize.x;
+        float3 c = tex2D(DifferenceOfGaussians, st0).rgb;
+        float gauss1 = gaussian(_SigmaA, d);
+
+        G += gauss1 * c;
+        w += gauss1;
+
+        v0 = tex2D(DOGTFM, uv).xy * texelSize;
+    }
+
+    float2 st1 = uv;
+    float2 v1 = v;
+
+    [loop]
+    for (int d = 0; d < kernelSize; ++d) {
+        st1 -= v1 * stepSize.y;
+        float3 c = tex2D(DifferenceOfGaussians, st1).rgb;
+        float gauss1 = gaussian(_SigmaA, d);
+
+        G += gauss1 * c;
+        w += gauss1;
+
+        v1 = tex2D(DOGTFM, uv).xy * texelSize;
+    }
+
+    return float4(G /= w, 1.0f);
+}
+
 float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float D = tex2D(DifferenceOfGaussians, uv).r * _TermStrength;
+    float D = tex2D(HorizontalBlur, uv).r * _TermStrength;
 
     float4 output = 1.0f;
     if (_BlendMode == 0)
@@ -197,6 +322,27 @@ technique AFX_DifferenceOfGaussians < ui_label = "Difference Of Gaussians"; > {
     }
 
     pass {
+        ComputeShader = CS_StructureTensor<8, 8>;
+
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
+    }
+
+    pass {
+        RenderTarget = AFX_HorizontalBlurTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_TFMHorizontalBlur;
+    }
+
+    pass {
+        RenderTarget = AFX_DOGTFMTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_TFMVerticalBlur;
+    }
+
+    pass {
         RenderTarget = AFX_HorizontalBlurTex;
 
         VertexShader = PostProcessVS;
@@ -208,6 +354,13 @@ technique AFX_DifferenceOfGaussians < ui_label = "Difference Of Gaussians"; > {
 
         VertexShader = PostProcessVS;
         PixelShader = PS_VerticalBlur;
+    }
+
+    pass {
+        RenderTarget = AFX_HorizontalBlurTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_AntiAlias;
     }
 
     pass {

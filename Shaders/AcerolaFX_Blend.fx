@@ -69,10 +69,12 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float3 a = saturate(col.rgb);
     float3 b = _ColorBlend ? _BlendColor : saturate(col.rgb);
 
+    float2 imageUV = float2(position.x / AFX_TEXTURE_WIDTH, position.y / AFX_TEXTURE_HEIGHT);
+
     if (_ColorBlend)
         b = _BlendColor;
     if (_TextureBlend)
-        b = tex2D(Image, uv).rgb;
+        b = tex2D(Image, imageUV).rgb;
 
     bool skyMask = true;
 

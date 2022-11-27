@@ -239,9 +239,9 @@ float4 PS_TFMVerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) :
     float3 col = 0;
     float kernelSum = 0.0f;
 
-    for (int x = -kernelRadius; x <= kernelRadius; ++x) {
-        float3 c = tex2D(HorizontalBlur, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb;
-        float gauss = gaussian(_SigmaC, x);
+    for (int y = -kernelRadius; y <= kernelRadius; ++y) {
+        float3 c = tex2D(HorizontalBlur, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rgb;
+        float gauss = gaussian(_SigmaC, y);
 
         col += c * gauss;
         kernelSum += gauss;
@@ -252,7 +252,7 @@ float4 PS_TFMVerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) :
     float lambda1 = 0.5f * (g.y + g.x + sqrt(g.y * g.y - 2.0f * g.x * g.y + g.x * g.x + 4.0 * g.z * g.z));
     float2 d = float2(g.x - lambda1, g.z);
 
-    return length(d) ? float4(normalize(d), sqrt(lambda1), 1.0f) : float4(0.0f, 1.0f, 0.0f, 1.0f);
+    return length(d) ? float4(normalize(d), sqrt(lambda1), 1.0f) : float4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 float4 PS_HorizontalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -399,6 +399,8 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
         D = (1 + _P) * (col.r * 100.0f) - _P * (col.g * 100.0f);
     }
+    D = max(0.0f, D);
+
     float4 output = D;
     if (_Thresholding == 0)
         output /= 100.0f;

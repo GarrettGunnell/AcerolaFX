@@ -143,6 +143,8 @@ uniform int _HatchTexture <
     ui_label = "Hatch Texture";
     ui_items = "No Texture\0"
                "Texture 1\0"
+               "Texture 2\0"
+               "Texture 3\0"
                "Custom Texture\0";
 > = 1;
 
@@ -321,8 +323,12 @@ sampler2D DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; MagFil
 storage2D s_DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; };
 texture2D AFX_LabTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Lab { Texture = AFX_LabTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-texture2D AFX_HatchTex < source = "hatch.png"; > { Width = 555; Height = 555; };
+texture2D AFX_HatchTex < source = "hatch.png"; > { Width = 512; Height = 512; };
 sampler2D Hatch { Texture = AFX_HatchTex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_Hatch2Tex < source = "hatch 2.png"; > { Width = 512; Height = 512; };
+sampler2D Hatch2 { Texture = AFX_Hatch2Tex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_Hatch3Tex < source = "hatch 3.png"; > { Width = 512; Height = 512; };
+sampler2D Hatch3 { Texture = AFX_Hatch3Tex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
 texture2D AFX_GaussiansBlendedTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler2D GaussiansBlended { Texture = AFX_GaussiansBlendedTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(GaussiansBlended, uv).rgba; }
@@ -627,6 +633,12 @@ float3 SampleHatch(int tex, float2 uv) {
         break;
         case 1:
             output = tex2D(Hatch, uv).rgb;
+        break;
+        case 2:
+            output = tex2D(Hatch2, uv).rgb;
+        break;
+        case 3:
+            output = tex2D(Hatch3, uv).rgb;
         break;
     }
 

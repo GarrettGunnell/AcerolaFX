@@ -670,7 +670,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
         );
         float3 s1 = SampleHatch(_HatchTexture, mul(R, hatchUV * _HatchRes1) * 0.5f + 0.5f);
 
-        output.rgb = lerp(s1, 1.0f, D.r);
+        output.rgb = lerp(s1, _MaxColor, D.r);
         
         if (_UseLayer2) {
             radians = _HatchRotation2 * AFX_PI / 180.0f;
@@ -680,7 +680,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             );
             float3 s2 = SampleHatch(_HatchTexture, mul(R2, hatchUV * _HatchRes2) * 0.5f + 0.5f);
 
-            output.rgb *= lerp(s2, 1.0f, D.g);
+            output.rgb *= lerp(s2, _MaxColor, D.g);
         }
 
         if (_UseLayer3) {
@@ -691,7 +691,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             );
             float3 s3 = SampleHatch(_HatchTexture, mul(R3, hatchUV * _HatchRes3) * 0.5f + 0.5f);
 
-            output.rgb *= lerp(s3, 1.0f, D.b);
+            output.rgb *= lerp(s3, _MaxColor, D.b);
         }
 
         if (_UseLayer4) {
@@ -702,7 +702,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             );
             float3 s4 = SampleHatch(_HatchTexture, mul(R4, hatchUV * _HatchRes4) * 0.5f + 0.5f);
 
-            output.rgb *= lerp(s4, 1.0f, D.a);
+            output.rgb *= lerp(s4, _MaxColor, D.a);
         }
     }
 

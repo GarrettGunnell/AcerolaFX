@@ -210,6 +210,34 @@ uniform float _HatchRotation3 <
     ui_tooltip = "Adjust the rotation of the third hatch layer texture resolution.";
 > = 1.0f;
 
+uniform float _Threshold4 <
+    ui_spacing = 5.0f;
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 100.0f;
+    ui_label = "Fourth White Point";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the white point of the fourth hatching layer.";
+> = 1.0f;
+
+uniform float _HatchRes4 <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Fourth Hatch Resolution";
+    ui_type = "drag";
+    ui_tooltip = "Adjust the size of the fourth hatch layer texture resolution.";
+> = 1.0f;
+
+uniform float _HatchRotation4 <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = -180.0f; ui_max = 180.0f;
+    ui_label = "Fourth Hatch Rotation";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the rotation of the fourth hatch layer texture resolution.";
+> = 1.0f;
+
 uniform float _TermStrength <
     ui_category_closed = true;
     ui_category = "Blend Settings";
@@ -265,6 +293,8 @@ sampler2D DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; MagFil
 storage2D s_DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; };
 texture2D AFX_LabTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Lab { Texture = AFX_LabTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_HatchTex < source = "hatch.png"; > { Width = 555; Height = 555; };
+sampler2D Hatch { Texture = AFX_HatchTex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
 texture2D AFX_GaussiansBlendedTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler2D GaussiansBlended { Texture = AFX_GaussiansBlendedTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(GaussiansBlended, uv).rgba; }
@@ -489,8 +519,12 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     float4 output = D;
     if (_Thresholding == 0)
         output /= 100.0f;
-    if (_Thresholding == 1)
-        output = (D >= _Threshold) ? 1 : 1 + tanh(_Phi * (D - _Threshold));
+    if (_Thresholding == 1 || _EnableHatching) {   
+        output.r = (D >= _Threshold) ? 1 : 1 + tanh(_Phi * (D - _Threshold));
+        output.g = (D >= _Threshold2) ? 1 : 1 + tanh(_Phi * (D - _Threshold2));
+        output.b = (D >= _Threshold3) ? 1 : 1 + tanh(_Phi * (D - _Threshold3));
+        output.a = (D >= _Threshold4) ? 1 : 1 + tanh(_Phi * (D - _Threshold4));
+    }
     if (_Thresholding == 2) {
         float a = 1.0f / _Thresholds;
         float b = _Threshold / 100.0f;
@@ -515,7 +549,7 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
         
         float kernelSize = _SigmaA * 2;
 
-        float3 G = 0.0f;
+        float4 G = 0.0f;
         float w = 0.0f;
 
         float2 v = tex2D(DOGTFM, uv).xy * texelSize;
@@ -527,7 +561,7 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
         [loop]
         for (int d = 0; d < kernelSize; ++d) {
             st0 += v0 * stepSize.x;
-            float3 c = tex2D(DifferenceOfGaussians, st0).rgb;
+            float4 c = tex2D(DifferenceOfGaussians, st0);
             float gauss1 = gaussian(_SigmaA, d);
 
             G += gauss1 * c;
@@ -542,7 +576,7 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
         [loop]
         for (int d = 0; d < kernelSize; ++d) {
             st1 -= v1 * stepSize.y;
-            float3 c = tex2D(DifferenceOfGaussians, st1).rgb;
+            float4 c = tex2D(DifferenceOfGaussians, st1);
             float gauss1 = gaussian(_SigmaA, d);
 
             G += gauss1 * c;
@@ -551,7 +585,7 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
             v1 = tex2D(DOGTFM, uv).xy * texelSize;
         }
 
-        return float4(G /= w, 1.0f);
+        return G /= w;
     } else {
         return tex2D(DifferenceOfGaussians, uv);
     }
@@ -559,18 +593,51 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 
 float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float D = tex2D(HorizontalBlur, uv).r * _TermStrength;
+    float4 D = tex2D(HorizontalBlur, uv) * _TermStrength;
 
     float4 output = 1.0f;
     if (_BlendMode == 0)
-        output.rgb = lerp(_MinColor, _MaxColor, D);
+        output.rgb = lerp(_MinColor, _MaxColor, D.r);
     if (_BlendMode == 1)
-        output.rgb = lerp(_MinColor, col.rgb, D);
+        output.rgb = lerp(_MinColor, col.rgb, D.r);
     if (_BlendMode == 2) {
         if (D.r < 0.5f)
-            output.rgb = lerp(_MinColor, col.rgb, D * 2.0f);
+            output.rgb = lerp(_MinColor, col.rgb, D.r * 2.0f);
         else
-            output.rgb = lerp(col.rgb, _MaxColor, (D - 0.5f) * 2.0f);
+            output.rgb = lerp(col.rgb, _MaxColor, (D.r - 0.5f) * 2.0f);
+    }
+
+    if (_EnableHatching) {
+        float2 hatchUV = (position.xy / 555.0f) * 2 - 1;
+        float radians = _HatchRotation1 * AFX_PI / 180.0f;
+        float2x2 R = float2x2(
+            cos(radians), -sin(radians),
+            sin(radians), cos(radians)
+        );
+        float3 s1 = tex2D(Hatch, mul(R, hatchUV * _HatchRes1) * 0.5f + 0.5f).rgb;
+
+        radians = _HatchRotation2 * AFX_PI / 180.0f;
+        float2x2 R2 = float2x2(
+            cos(radians), -sin(radians),
+            sin(radians), cos(radians)
+        );
+        float3 s2 = tex2D(Hatch, mul(R2, hatchUV * _HatchRes2) * 0.5f + 0.5f).rgb;
+
+        radians = _HatchRotation3 * AFX_PI / 180.0f;
+        float2x2 R3 = float2x2(
+            cos(radians), -sin(radians),
+            sin(radians), cos(radians)
+        );
+        float3 s3 = tex2D(Hatch, mul(R3, hatchUV * _HatchRes3) * 0.5f + 0.5f).rgb;
+
+        radians = _HatchRotation4 * AFX_PI / 180.0f;
+        float2x2 R4 = float2x2(
+            cos(radians), -sin(radians),
+            sin(radians), cos(radians)
+        );
+        float3 s4 = tex2D(Hatch, mul(R4, hatchUV * _HatchRes4) * 0.5f + 0.5f).rgb;
+
+        output.rgb = lerp(s1, 1.0f, D.r) * lerp(s2, 1.0f, D.g) * lerp(s3, 1.0f, D.b) * lerp(s4, 1.0f, D.a);
     }
 
     return saturate(lerp(col, output, _BlendStrength));

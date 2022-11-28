@@ -1,6 +1,8 @@
 #include "AcerolaFX_Common.fxh"
 
 uniform bool _UseFlow <
+    ui_category_closed = true;
+    ui_category = "Edge Tangent Flow Settings";
     ui_label = "Use Flow";
     ui_tooltip = "Whether or not to use the flow difference of gaussians or not.";
 > = true;
@@ -65,6 +67,8 @@ uniform float _P <
 > = 1.0f;
 
 uniform bool _SmoothEdges <
+    ui_category_closed = true;
+    ui_category = "Anti Aliasing Settings";
     ui_label = "Smooth Edges";
     ui_tooltip = "Whether or not to apply anti aliasing to the edges of the image.";
 > = true;

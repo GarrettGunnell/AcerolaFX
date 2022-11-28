@@ -76,17 +76,17 @@ texture2D AFX_BlendTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFE
 sampler2D Blend { Texture = AFX_BlendTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Blend, uv).rgba; }
 
-float3 SampleBlendTex(int tex, float2 uv) {
+float3 SampleBlendTex(int tex, float2 position) {
     float3 output = 0.0f;
     switch(tex) {
         case 0:
-            output = tex2D(Paper, uv).rgb;
+            output = tex2D(Paper, position / float2(1024, 512)).rgb;
         break;
         case 1:
-            output = tex2D(Watercolor, uv).rgb;
+            output = tex2D(Watercolor, position / float2(AFX_TEXTURE_WIDTH, AFX_TEXTURE_HEIGHT)).rgb;
         break;
         case 2:
-            output = tex2D(Image, uv).rgb;
+            output = tex2D(Image, position / float2(AFX_TEXTURE_WIDTH, AFX_TEXTURE_HEIGHT)).rgb;
         break;
     }
 
@@ -98,12 +98,10 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     float3 a = saturate(col.rgb);
     float3 b = _ColorBlend ? _BlendColor : saturate(col.rgb);
 
-    float2 imageUV = float2(position.x / AFX_TEXTURE_WIDTH, position.y / AFX_TEXTURE_HEIGHT);
-
     if (_ColorBlend)
         b = _BlendColor;
     if (_TextureBlend)
-        b = SampleBlendTex(_BlendTexture, uv);
+        b = SampleBlendTex(_BlendTexture, position.xy);
 
     bool skyMask = true;
 

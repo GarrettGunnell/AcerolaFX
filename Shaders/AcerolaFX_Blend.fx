@@ -83,7 +83,7 @@ float3 SampleBlendTex(int tex, float2 position) {
             output = tex2D(Paper, position / float2(1024, 512)).rgb;
         break;
         case 1:
-            output = tex2D(Watercolor, position / float2(AFX_TEXTURE_WIDTH, AFX_TEXTURE_HEIGHT)).rgb;
+            output = tex2D(Watercolor, position / float2(1024, 512)).rgb;
         break;
         case 2:
             output = tex2D(Image, position / float2(AFX_TEXTURE_WIDTH, AFX_TEXTURE_HEIGHT)).rgb;

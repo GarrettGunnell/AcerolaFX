@@ -29,6 +29,26 @@ uniform bool _ColorBlend <
     ui_tooltip = "Use color defined above to blend instead of the render.";
 > = false;
 
+uniform int _BlendTexture <
+    ui_type = "combo";
+    ui_label = "Blend Texture";
+    ui_items = "Paper\0"
+               "Watercolor\0"
+               "Custom Texture\0";
+> = 1;
+
+uniform bool _TextureBlend <
+    ui_label = "Use Texture";
+    ui_tooltip = "Use the texture to blend on to.";
+> = false;
+
+uniform float _TextureRes <
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Texture Resolution";
+    ui_type = "drag";
+    ui_tooltip = "Scaling of the blended texture.";
+> = 1.0f;
+
 uniform float _Strength <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Blend Strength";
@@ -41,14 +61,54 @@ uniform bool _SampleSky <
     ui_tooltip = "Include sky in blend.";
 > = true;
 
+#ifndef AFX_TEXTURE_PATH
+#define AFX_TEXTURE_PATH "watercolor.png"
+#endif
+
+#ifndef AFX_TEXTURE_WIDTH
+#define AFX_TEXTURE_WIDTH 1920
+#endif
+
+#ifndef AFX_TEXTURE_HEIGHT
+#define AFX_TEXTURE_HEIGHT 1080
+#endif
+
+texture2D AFX_BlendTextureTex < source = AFX_TEXTURE_PATH; > { Width = AFX_TEXTURE_WIDTH; Height = AFX_TEXTURE_HEIGHT; };
+sampler2D Image { Texture = AFX_BlendTextureTex; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_WatercolorTex < source = "watercolor.png"; > { Width = AFX_TEXTURE_WIDTH; Height = AFX_TEXTURE_HEIGHT; };
+sampler2D Watercolor { Texture = AFX_WatercolorTex; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_PaperTex < source = "paper.png"; > { Width = AFX_TEXTURE_WIDTH; Height = AFX_TEXTURE_HEIGHT; };
+sampler2D Paper { Texture = AFX_PaperTex; AddressU = REPEAT; AddressV = REPEAT; };
 texture2D AFX_BlendTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Blend { Texture = AFX_BlendTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Blend, uv).rgba; }
+
+float3 SampleBlendTex(int tex, float2 position) {
+    float3 output = 0.0f;
+    switch(tex) {
+        case 0:
+            output = tex2D(Paper, position / float2(1024, 512)).rgb;
+        break;
+        case 1:
+            output = tex2D(Watercolor, position / float2(1024, 512)).rgb;
+        break;
+        case 2:
+            output = tex2D(Image, position / float2(AFX_TEXTURE_WIDTH, AFX_TEXTURE_HEIGHT)).rgb;
+        break;
+    }
+
+    return output;
+}
 
 float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float3 a = saturate(col.rgb);
     float3 b = _ColorBlend ? _BlendColor : saturate(col.rgb);
+
+    if (_ColorBlend)
+        b = _BlendColor;
+    if (_TextureBlend)
+        b = SampleBlendTex(_BlendTexture, position.xy * _TextureRes);
 
     bool skyMask = true;
 

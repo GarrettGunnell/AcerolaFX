@@ -314,6 +314,21 @@ uniform float _BlendStrength <
     ui_tooltip = "Adjust strength of color blending.";
 > = 1;
 
+#ifndef AFX_HATCH_TEXTURE_PATH
+#define AFX_HATCH_TEXTURE_PATH "paper.png"
+#endif
+
+#ifndef AFX_HATCH_TEXTURE_WIDTH
+#define AFX_HATCH_TEXTURE_WIDTH 512
+#endif
+
+#ifndef AFX_HATCH_TEXTURE_HEIGHT
+#define AFX_HATCH_TEXTURE_HEIGHT 512
+#endif
+
+texture2D AFX_CustomHatchTex < source = AFX_HATCH_TEXTURE_PATH; > { Width = AFX_HATCH_TEXTURE_WIDTH; Height = AFX_HATCH_TEXTURE_HEIGHT; };
+sampler2D CustomHatch { Texture = AFX_CustomHatchTex; AddressU = REPEAT; AddressV = REPEAT; };
+
 texture2D AFX_HorizontalBlurTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D HorizontalBlur { Texture = AFX_HorizontalBlurTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 texture2D AFX_DOGTFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
@@ -640,6 +655,9 @@ float3 SampleHatch(int tex, float2 uv) {
         case 3:
             output = tex2D(Hatch3, uv).rgb;
         break;
+        case 4:
+            output = tex2D(CustomHatch, uv).rgb;
+        break;
     }
 
     return output;
@@ -662,7 +680,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     }
 
     if (_EnableHatching) {
-        float2 hatchUV = (position.xy / 512.0f) * 2 - 1;
+        float2 hatchUV = (position.xy / ((_HatchTexture == 4) ? float2(AFX_HATCH_TEXTURE_WIDTH, AFX_HATCH_TEXTURE_HEIGHT) : 512.0f)) * 2 - 1;
         float radians = _HatchRotation1 * AFX_PI / 180.0f;
         float2x2 R = float2x2(
             cos(radians), -sin(radians),

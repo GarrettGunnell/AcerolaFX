@@ -13,7 +13,10 @@ For an album of gpose shader comparisons please look [here](https://imgsli.com/M
 ![example1](./Examples/example1.png) <br>
 ![example2](./Examples/example2.png) <br>
 ![example3](./Examples/example3.png) <br>
-![example4](./Examples/example4.png)
+![example4](./Examples/example4.png) <br>
+![example3](./Examples/example5.png) <br>
+![example4](./Examples/example6.png) <br>
+![example4](./Examples/example7.png)
 
 ### Credits
 

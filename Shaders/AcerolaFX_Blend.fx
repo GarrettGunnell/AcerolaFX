@@ -39,8 +39,15 @@ uniform int _BlendTexture <
 
 uniform bool _TextureBlend <
     ui_label = "Use Texture";
-    ui_tooltip = "Use the texture defined in the preprocessor macros to blend on to.";
+    ui_tooltip = "Use the texture to blend on to.";
 > = false;
+
+uniform float _TextureRes <
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Texture Resolution";
+    ui_type = "drag";
+    ui_tooltip = "Scaling of the blended texture.";
+> = 1.0f;
 
 uniform float _Strength <
     ui_min = 0.0f; ui_max = 1.0f;
@@ -101,7 +108,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     if (_ColorBlend)
         b = _BlendColor;
     if (_TextureBlend)
-        b = SampleBlendTex(_BlendTexture, position.xy);
+        b = SampleBlendTex(_BlendTexture, position.xy * _TextureRes);
 
     bool skyMask = true;
 

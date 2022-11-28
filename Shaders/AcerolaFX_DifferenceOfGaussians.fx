@@ -154,8 +154,14 @@ uniform float _HatchRotation1 <
     ui_tooltip = "Adjust the rotation of the first hatch layer texture resolution.";
 > = 1.0f;
 
-uniform float _Threshold2 <
+uniform bool _UseLayer2 <
     ui_spacing = 5.0f;
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_label = "Layer 2";
+> = false;
+
+uniform float _Threshold2 <
     ui_category_closed = true;
     ui_category = "Cross Hatch Settings";
     ui_min = 0.0f; ui_max = 100.0f;
@@ -182,8 +188,14 @@ uniform float _HatchRotation2 <
     ui_tooltip = "Adjust the rotation of the second hatch layer texture resolution.";
 > = 1.0f;
 
-uniform float _Threshold3 <
+uniform bool _UseLayer3 <
     ui_spacing = 5.0f;
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_label = "Layer 3";
+> = false;
+
+uniform float _Threshold3 <
     ui_category_closed = true;
     ui_category = "Cross Hatch Settings";
     ui_min = 0.0f; ui_max = 100.0f;
@@ -210,8 +222,14 @@ uniform float _HatchRotation3 <
     ui_tooltip = "Adjust the rotation of the third hatch layer texture resolution.";
 > = 1.0f;
 
-uniform float _Threshold4 <
+uniform bool _UseLayer4 <
     ui_spacing = 5.0f;
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_label = "Layer 4";
+> = false;
+
+uniform float _Threshold4 <
     ui_category_closed = true;
     ui_category = "Cross Hatch Settings";
     ui_min = 0.0f; ui_max = 100.0f;
@@ -616,28 +634,40 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
         );
         float3 s1 = tex2D(Hatch, mul(R, hatchUV * _HatchRes1) * 0.5f + 0.5f).rgb;
 
-        radians = _HatchRotation2 * AFX_PI / 180.0f;
-        float2x2 R2 = float2x2(
-            cos(radians), -sin(radians),
-            sin(radians), cos(radians)
-        );
-        float3 s2 = tex2D(Hatch, mul(R2, hatchUV * _HatchRes2) * 0.5f + 0.5f).rgb;
+        output.rgb = lerp(s1, 1.0f, D.r);
+        
+        if (_UseLayer2) {
+            radians = _HatchRotation2 * AFX_PI / 180.0f;
+            float2x2 R2 = float2x2(
+                cos(radians), -sin(radians),
+                sin(radians), cos(radians)
+            );
+            float3 s2 = tex2D(Hatch, mul(R2, hatchUV * _HatchRes2) * 0.5f + 0.5f).rgb;
 
-        radians = _HatchRotation3 * AFX_PI / 180.0f;
-        float2x2 R3 = float2x2(
-            cos(radians), -sin(radians),
-            sin(radians), cos(radians)
-        );
-        float3 s3 = tex2D(Hatch, mul(R3, hatchUV * _HatchRes3) * 0.5f + 0.5f).rgb;
+            output.rgb *= lerp(s2, 1.0f, D.g);
+        }
 
-        radians = _HatchRotation4 * AFX_PI / 180.0f;
-        float2x2 R4 = float2x2(
-            cos(radians), -sin(radians),
-            sin(radians), cos(radians)
-        );
-        float3 s4 = tex2D(Hatch, mul(R4, hatchUV * _HatchRes4) * 0.5f + 0.5f).rgb;
+        if (_UseLayer3) {
+            radians = _HatchRotation3 * AFX_PI / 180.0f;
+            float2x2 R3 = float2x2(
+                cos(radians), -sin(radians),
+                sin(radians), cos(radians)
+            );
+            float3 s3 = tex2D(Hatch, mul(R3, hatchUV * _HatchRes3) * 0.5f + 0.5f).rgb;
 
-        output.rgb = lerp(s1, 1.0f, D.r) * lerp(s2, 1.0f, D.g) * lerp(s3, 1.0f, D.b) * lerp(s4, 1.0f, D.a);
+            output.rgb *= lerp(s3, 1.0f, D.b);
+        }
+
+        if (_UseLayer4) {
+            radians = _HatchRotation4 * AFX_PI / 180.0f;
+            float2x2 R4 = float2x2(
+                cos(radians), -sin(radians),
+                sin(radians), cos(radians)
+            );
+            float3 s4 = tex2D(Hatch, mul(R4, hatchUV * _HatchRes4) * 0.5f + 0.5f).rgb;
+
+            output.rgb *= lerp(s4, 1.0f, D.a);
+        }
     }
 
     return saturate(lerp(col, output, _BlendStrength));

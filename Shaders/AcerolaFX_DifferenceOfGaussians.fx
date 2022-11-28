@@ -1,6 +1,8 @@
 #include "AcerolaFX_Common.fxh"
 
 uniform bool _UseFlow <
+    ui_category_closed = true;
+    ui_category = "Edge Tangent Flow Settings";
     ui_label = "Use Flow";
     ui_tooltip = "Whether or not to use the flow difference of gaussians or not.";
 > = true;
@@ -65,6 +67,8 @@ uniform float _P <
 > = 1.0f;
 
 uniform bool _SmoothEdges <
+    ui_category_closed = true;
+    ui_category = "Anti Aliasing Settings";
     ui_label = "Smooth Edges";
     ui_tooltip = "Whether or not to apply anti aliasing to the edges of the image.";
 > = true;
@@ -123,6 +127,87 @@ uniform float _Phi <
     ui_label = "Soft Threshold";
     ui_type = "slider";
     ui_tooltip = "Adjust curve of hyperbolic tangent.";
+> = 1.0f;
+
+uniform bool _EnableHatching <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_label = "Use Hatching";
+    ui_tooltip = "Whether or not to render cross hatching.";
+> = false;
+
+uniform float _HatchRes1 <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "First Hatch Resolution";
+    ui_type = "drag";
+    ui_tooltip = "Adjust the size of the first hatch layer texture resolution.";
+> = 1.0f;
+
+uniform float _HatchRotation1 <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = -180.0f; ui_max = 180.0f;
+    ui_label = "First Hatch Rotation";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the rotation of the first hatch layer texture resolution.";
+> = 1.0f;
+
+uniform float _Threshold2 <
+    ui_spacing = 5.0f;
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 100.0f;
+    ui_label = "Second White Point";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the white point of the second hatching layer.";
+> = 1.0f;
+
+uniform float _HatchRes2 <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Second Hatch Resolution";
+    ui_type = "drag";
+    ui_tooltip = "Adjust the size of the second hatch layer texture resolution.";
+> = 1.0f;
+
+uniform float _HatchRotation2 <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = -180.0f; ui_max = 180.0f;
+    ui_label = "Second Hatch Rotation";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the rotation of the second hatch layer texture resolution.";
+> = 1.0f;
+
+uniform float _Threshold3 <
+    ui_spacing = 5.0f;
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 100.0f;
+    ui_label = "Third White Point";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the white point of the third hatching layer.";
+> = 1.0f;
+
+uniform float _HatchRes3 <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Third Hatch Resolution";
+    ui_type = "drag";
+    ui_tooltip = "Adjust the size of the third hatch layer texture resolution.";
+> = 1.0f;
+
+uniform float _HatchRotation3 <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = -180.0f; ui_max = 180.0f;
+    ui_label = "Third Hatch Rotation";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the rotation of the third hatch layer texture resolution.";
 > = 1.0f;
 
 uniform float _TermStrength <

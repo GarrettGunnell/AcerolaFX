@@ -136,6 +136,16 @@ uniform bool _EnableHatching <
     ui_tooltip = "Whether or not to render cross hatching.";
 > = false;
 
+uniform int _HatchTexture <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_type = "combo";
+    ui_label = "Hatch Texture";
+    ui_items = "No Texture\0"
+               "Texture 1\0"
+               "Custom Texture\0";
+> = 1;
+
 uniform float _HatchRes1 <
     ui_category_closed = true;
     ui_category = "Cross Hatch Settings";
@@ -609,6 +619,20 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     }
 }
 
+float3 SampleHatch(int tex, float2 uv) {
+    float3 output = 0.0f;
+    switch(tex) {
+        case 0:
+            output = 0.0f;
+        break;
+        case 1:
+            output = tex2D(Hatch, uv).rgb;
+        break;
+    }
+
+    return output;
+}
+
 float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float4 D = tex2D(HorizontalBlur, uv) * _TermStrength;
@@ -626,13 +650,13 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     }
 
     if (_EnableHatching) {
-        float2 hatchUV = (position.xy / 555.0f) * 2 - 1;
+        float2 hatchUV = (position.xy / 512.0f) * 2 - 1;
         float radians = _HatchRotation1 * AFX_PI / 180.0f;
         float2x2 R = float2x2(
             cos(radians), -sin(radians),
             sin(radians), cos(radians)
         );
-        float3 s1 = tex2D(Hatch, mul(R, hatchUV * _HatchRes1) * 0.5f + 0.5f).rgb;
+        float3 s1 = SampleHatch(_HatchTexture, mul(R, hatchUV * _HatchRes1) * 0.5f + 0.5f);
 
         output.rgb = lerp(s1, 1.0f, D.r);
         
@@ -642,7 +666,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
                 cos(radians), -sin(radians),
                 sin(radians), cos(radians)
             );
-            float3 s2 = tex2D(Hatch, mul(R2, hatchUV * _HatchRes2) * 0.5f + 0.5f).rgb;
+            float3 s2 = SampleHatch(_HatchTexture, mul(R2, hatchUV * _HatchRes2) * 0.5f + 0.5f);
 
             output.rgb *= lerp(s2, 1.0f, D.g);
         }
@@ -653,7 +677,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
                 cos(radians), -sin(radians),
                 sin(radians), cos(radians)
             );
-            float3 s3 = tex2D(Hatch, mul(R3, hatchUV * _HatchRes3) * 0.5f + 0.5f).rgb;
+            float3 s3 = SampleHatch(_HatchTexture, mul(R3, hatchUV * _HatchRes3) * 0.5f + 0.5f);
 
             output.rgb *= lerp(s3, 1.0f, D.b);
         }
@@ -664,7 +688,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
                 cos(radians), -sin(radians),
                 sin(radians), cos(radians)
             );
-            float3 s4 = tex2D(Hatch, mul(R4, hatchUV * _HatchRes4) * 0.5f + 0.5f).rgb;
+            float3 s4 = SampleHatch(_HatchTexture, mul(R4, hatchUV * _HatchRes4) * 0.5f + 0.5f);
 
             output.rgb *= lerp(s4, 1.0f, D.a);
         }

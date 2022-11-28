@@ -29,6 +29,14 @@ uniform bool _ColorBlend <
     ui_tooltip = "Use color defined above to blend instead of the render.";
 > = false;
 
+uniform int _BlendTexture <
+    ui_type = "combo";
+    ui_label = "Blend Texture";
+    ui_items = "Paper\0"
+               "Watercolor\0"
+               "Custom Texture\0";
+> = 1;
+
 uniform bool _TextureBlend <
     ui_label = "Use Texture";
     ui_tooltip = "Use the texture defined in the preprocessor macros to blend on to.";
@@ -60,9 +68,30 @@ uniform bool _SampleSky <
 
 texture2D AFX_BlendTextureTex < source = AFX_TEXTURE_PATH; > { Width = AFX_TEXTURE_WIDTH; Height = AFX_TEXTURE_HEIGHT; };
 sampler2D Image { Texture = AFX_BlendTextureTex; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_WatercolorTex < source = "watercolor.png"; > { Width = AFX_TEXTURE_WIDTH; Height = AFX_TEXTURE_HEIGHT; };
+sampler2D Watercolor { Texture = AFX_WatercolorTex; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_PaperTex < source = "paper.png"; > { Width = AFX_TEXTURE_WIDTH; Height = AFX_TEXTURE_HEIGHT; };
+sampler2D Paper { Texture = AFX_PaperTex; AddressU = REPEAT; AddressV = REPEAT; };
 texture2D AFX_BlendTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D Blend { Texture = AFX_BlendTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Blend, uv).rgba; }
+
+float3 SampleBlendTex(int tex, float2 uv) {
+    float3 output = 0.0f;
+    switch(tex) {
+        case 0:
+            output = tex2D(Paper, uv).rgb;
+        break;
+        case 1:
+            output = tex2D(Watercolor, uv).rgb;
+        break;
+        case 2:
+            output = tex2D(Image, uv).rgb;
+        break;
+    }
+
+    return output;
+}
 
 float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = tex2D(Common::AcerolaBuffer, uv);
@@ -74,7 +103,7 @@ float4 PS_Blend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
     if (_ColorBlend)
         b = _BlendColor;
     if (_TextureBlend)
-        b = tex2D(Image, imageUV).rgb;
+        b = SampleBlendTex(_BlendTexture, uv);
 
     bool skyMask = true;
 

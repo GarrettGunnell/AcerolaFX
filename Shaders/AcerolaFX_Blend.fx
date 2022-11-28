@@ -66,11 +66,11 @@ uniform bool _SampleSky <
 #endif
 
 #ifndef AFX_TEXTURE_WIDTH
-#define AFX_TEXTURE_WIDTH 1920
+#define AFX_TEXTURE_WIDTH 1024
 #endif
 
 #ifndef AFX_TEXTURE_HEIGHT
-#define AFX_TEXTURE_HEIGHT 1080
+#define AFX_TEXTURE_HEIGHT 512
 #endif
 
 texture2D AFX_BlendTextureTex < source = AFX_TEXTURE_PATH; > { Width = AFX_TEXTURE_WIDTH; Height = AFX_TEXTURE_HEIGHT; };

@@ -28,4 +28,6 @@ https://github.com/LordOfLunacy/Insane-Shaders/blob/master/Shaders/DevShaders/Co
 https://bruop.github.io/exposure/ <br>
 https://www.alextardif.com/HistogramLuminance.html <br>
 https://github.com/GameTechDev/XeGTAO <br>
-https://github.com/niessner/VoxelHashing/blob/master/DepthSensing/Shaders/BilateralFilter.hlsl
+https://github.com/niessner/VoxelHashing/blob/master/DepthSensing/Shaders/BilateralFilter.hlsl <br>
+https://users.cs.northwestern.edu/~sco590/winnemoeller-cag2012.pdf <br>
+https://en.wikipedia.org/wiki/Kuwahara_filter

@@ -18,6 +18,13 @@ uniform float _Theta <
     ui_tooltip = "Adjust rotation of the frame.";
 > = 0;
 
+uniform float _Alpha <
+    ui_min = 0f; ui_max = 1.0f;
+    ui_label = "Alpha";
+    ui_type = "drag";
+    ui_tooltip = "Adjust alpha of the frame.";
+> = 1f;
+
 uniform int _Left <
     ui_min = -BUFFER_WIDTH; ui_max = BUFFER_WIDTH;
     ui_category = "Frame Dimensions";
@@ -82,7 +89,7 @@ float4 PS_Framing(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
     float2 rotatedPosition = mul(R, position.xy - offset) + offset;
 
     if ((any(rotatedPosition < minBounds) || any(maxBounds < rotatedPosition)) && _DepthCutoff < depth)
-        return float4(_FrameColor, 1.0f);
+        return float4(lerp(col.xyz, _FrameColor, _Alpha), 1.0f);
 
 
     return col;

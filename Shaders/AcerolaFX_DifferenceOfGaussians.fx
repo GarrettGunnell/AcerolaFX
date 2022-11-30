@@ -145,10 +145,37 @@ uniform int _HatchTexture <
                "Texture 1\0"
                "Texture 2\0"
                "Texture 3\0"
+               "Texture 4\0"
                "Custom Texture\0";
 > = 1;
 
+uniform bool _ColoredPencilEnabled <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_label = "Colored Pencil";
+    ui_tooltip = "Color the hatch lines.";
+> = false;
+
+uniform float _BrightnessOffset <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Brightness";
+    ui_type = "drag";
+    ui_tooltip = "Adjusts brightness of color pencil lines.";
+> = 0.5f;
+
+uniform float _Saturation <
+    ui_category_closed = true;
+    ui_category = "Cross Hatch Settings";
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Saturation";
+    ui_type = "drag";
+    ui_tooltip = "Adjusts saturation of color pencil lines to bring out more color.";
+> = 1.0f;
+
 uniform float _HatchRes1 <
+    ui_spacing = 5.0f;
     ui_category_closed = true;
     ui_category = "Cross Hatch Settings";
     ui_min = 0.0f; ui_max = 5.0f;
@@ -344,6 +371,8 @@ texture2D AFX_Hatch2Tex < source = "hatch 2.png"; > { Width = 512; Height = 512;
 sampler2D Hatch2 { Texture = AFX_Hatch2Tex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
 texture2D AFX_Hatch3Tex < source = "hatch 3.png"; > { Width = 512; Height = 512; };
 sampler2D Hatch3 { Texture = AFX_Hatch3Tex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_Hatch4Tex < source = "hatch 4.png"; > { Width = 512; Height = 512; };
+sampler2D Hatch4 { Texture = AFX_Hatch4Tex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
 texture2D AFX_GaussiansBlendedTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler2D GaussiansBlended { Texture = AFX_GaussiansBlendedTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(GaussiansBlended, uv).rgba; }
@@ -656,6 +685,9 @@ float3 SampleHatch(int tex, float2 uv) {
             output = tex2D(Hatch3, uv).rgb;
         break;
         case 4:
+            output = tex2D(Hatch4, uv).rgb;
+        break;
+        case 5:
             output = tex2D(CustomHatch, uv).rgb;
         break;
     }
@@ -667,17 +699,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float4 D = tex2D(HorizontalBlur, uv) * _TermStrength;
 
-    float4 output = 1.0f;
-    if (_BlendMode == 0)
-        output.rgb = lerp(_MinColor, _MaxColor, D.r);
-    if (_BlendMode == 1)
-        output.rgb = lerp(_MinColor, col.rgb, D.r);
-    if (_BlendMode == 2) {
-        if (D.r < 0.5f)
-            output.rgb = lerp(_MinColor, col.rgb, D.r * 2.0f);
-        else
-            output.rgb = lerp(col.rgb, _MaxColor, (D.r - 0.5f) * 2.0f);
-    }
+    float4 output = D;
 
     if (_EnableHatching) {
         float2 hatchUV = (position.xy / ((_HatchTexture == 4) ? float2(AFX_HATCH_TEXTURE_WIDTH, AFX_HATCH_TEXTURE_HEIGHT) : 512.0f)) * 2 - 1;
@@ -688,7 +710,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
         );
         float3 s1 = SampleHatch(_HatchTexture, mul(R, hatchUV * _HatchRes1) * 0.5f + 0.5f);
 
-        output.rgb = lerp(s1, _MaxColor, D.r);
+        output.rgb = lerp(s1, 1.0f, D.r);
         
         if (_UseLayer2) {
             radians = _HatchRotation2 * AFX_PI / 180.0f;
@@ -698,7 +720,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             );
             float3 s2 = SampleHatch(_HatchTexture, mul(R2, hatchUV * _HatchRes2) * 0.5f + 0.5f);
 
-            output.rgb *= lerp(s2, _MaxColor, D.g);
+            output.rgb *= lerp(s2, 1.0f, D.g);
         }
 
         if (_UseLayer3) {
@@ -709,7 +731,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             );
             float3 s3 = SampleHatch(_HatchTexture, mul(R3, hatchUV * _HatchRes3) * 0.5f + 0.5f);
 
-            output.rgb *= lerp(s3, _MaxColor, D.b);
+            output.rgb *= lerp(s3, 1.0f, D.b);
         }
 
         if (_UseLayer4) {
@@ -720,8 +742,28 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             );
             float3 s4 = SampleHatch(_HatchTexture, mul(R4, hatchUV * _HatchRes4) * 0.5f + 0.5f);
 
-            output.rgb *= lerp(s4, _MaxColor, D.a);
+            output.rgb *= lerp(s4, 1.0f, D.a);
         }
+        if (_ColoredPencilEnabled) {
+            float3 coloredPencil = col.rgb + _BrightnessOffset;
+            coloredPencil = lerp(Common::Luminance(coloredPencil), coloredPencil, _Saturation);
+            coloredPencil = lerp(coloredPencil, _MaxColor, output.rgb);
+
+            return float4(lerp(col.rgb, coloredPencil, _BlendStrength), 1.0f);
+            }
+    }
+
+
+    D = Common::Luminance(output.rgb);
+    if (_BlendMode == 0)
+        output.rgb = lerp(_MinColor, _MaxColor, D.r);
+    if (_BlendMode == 1)
+        output.rgb = lerp(_MinColor, col.rgb, D.r);
+    if (_BlendMode == 2) {
+        if (D.r < 0.5f)
+            output.rgb = lerp(_MinColor, col.rgb, D.r * 2.0f);
+        else
+            output.rgb = lerp(col.rgb, _MaxColor, (D.r - 0.5f) * 2.0f);
     }
 
     return saturate(lerp(col, output, _BlendStrength));

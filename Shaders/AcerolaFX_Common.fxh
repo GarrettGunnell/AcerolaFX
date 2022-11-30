@@ -25,6 +25,11 @@ namespace Common {
         return max(0.00001f, dot(color, float3(0.2127f, 0.7152f, 0.0722f)));
     }
 
+    float3 Map(float3 x, float3 inputStart, float3 inputEnd, float3 outputStart, float3 outputEnd) {
+        float3 slope = (outputEnd - outputStart) / (inputEnd - inputStart);
+        return outputStart + slope * (x - inputStart);
+    }
+
     //https://docs.unity3d.com/Packages/com.unity.shadergraph@6.9/manual/White-Balance-Node.html
     float3 WhiteBalance(float3 col, float temp, float tint) {
         float t1 = temp * 10.0f / 6.0f;

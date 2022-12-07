@@ -1,5 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
-#include "Includes/AcerolaFX_HDRTempTex1.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 #include "Includes/AcerolaFX_XeGTAO.fxh"
 
 uniform float _EffectRadius <

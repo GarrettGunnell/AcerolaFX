@@ -1,6 +1,6 @@
 #include "Includes/AcerolaFX_Common.fxh"
-#include "Includes/AcerolaFX_HDRTempTex1.fxh"
-#include "Includes/AcerolaFX_HDRTempTex2.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_TempTex2.fxh"
 
 uniform int _Filter <
     ui_type = "combo";

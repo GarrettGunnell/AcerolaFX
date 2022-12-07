@@ -1,8 +1,8 @@
 #include "Includes/AcerolaFX_Common.fxh"
-#include "Includes/AcerolaFX_TempTex1.fxh"
-#include "Includes/AcerolaFX_TempTex2.fxh"
-#include "Includes/AcerolaFX_TempTex3.fxh"
-#include "Includes/AcerolaFX_TempTex4.fxh"
+#include "Includes/AcerolaFX_HDRTempTex1.fxh"
+#include "Includes/AcerolaFX_HDRTempTex2.fxh"
+#include "Includes/AcerolaFX_HDRTempTex3.fxh"
+#include "Includes/AcerolaFX_HDRTempTex4.fxh"
 
 uniform bool _UseFlow <
     ui_category_closed = true;
@@ -770,7 +770,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     return saturate(lerp(col, output, _BlendStrength));
 }
 
-technique AFX_DifferenceOfGaussians < ui_label = "Difference Of Gaussians"; > {
+technique AFX_DifferenceOfGaussians < ui_label = "(LDR) Difference Of Gaussians"; > {
     pass {
         RenderTarget = AFXTemp1::AFX_RenderTex1;
 

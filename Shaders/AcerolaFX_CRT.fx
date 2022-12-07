@@ -1,5 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
-#include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_HDRTempTex1.fxh"
 
 uniform float _Curvature <
     ui_min = 1.0f; ui_max = 10.0f;

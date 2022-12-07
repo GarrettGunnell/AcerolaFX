@@ -1,5 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
-#include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_HDRTempTex1.fxh"
 
 #ifndef AFX_DOWNSCALE_FACTOR
     #define AFX_DOWNSCALE_FACTOR 1

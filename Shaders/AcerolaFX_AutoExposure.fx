@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 #include "Includes/AcerolaFX_Downscales.fxh"
 
 uniform float _MinLogLuminance <
@@ -78,10 +79,7 @@ uniform float _DeltaTime < source = "frametime"; >;
 #define AFX_LOG_RANGE (_MaxLogLuminance - _MinLogLuminance)
 #define AFX_LOG_RANGE_RCP 1.0f / AFX_LOG_RANGE
 
-texture2D AFX_AutoExposureTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D AutoExposure { Texture = AFX_AutoExposureTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_AutoExposure { Texture = AFX_AutoExposureTex; };
-void CS_EndPass(uint3 tid : SV_DISPATCHTHREADID) { tex2Dstore(Common::s_AcerolaBuffer, tid.xy, tex2Dfetch(AutoExposure, tid.xy)); }
+void CS_EndPass(uint3 tid : SV_DISPATCHTHREADID) { tex2Dstore(Common::s_AcerolaBuffer, tid.xy, tex2Dfetch(AFXTemp1::RenderTex, tid.xy)); }
 
 texture2D AFX_HistogramTileTex {
     Width = AFX_TILE_COUNT; Height = 256; Format = R32F;
@@ -190,7 +188,7 @@ void CS_AutoExposure(uint3 tid : SV_DISPATCHTHREADID) {
     yxy.x /= luminanceScale;
     col.rgb = Common::convertYxy2RGB(yxy);
 
-    tex2Dstore(s_AutoExposure, tid.xy, col);
+    tex2Dstore(AFXTemp1::s_RenderTex, tid.xy, col);
 }
 
 

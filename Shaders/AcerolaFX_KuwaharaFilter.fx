@@ -1,4 +1,6 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_TempTex2.fxh"
 
 uniform int _Filter <
     ui_type = "combo";
@@ -86,9 +88,8 @@ uniform float _DepthCurve <
 # define AFX_SECTORS 8
 #endif
 
-texture2D AFX_KuwaharaFilterTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D KuwaharaFilter { Texture = AFX_KuwaharaFilterTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_KuwaharaFilter { Texture = AFX_KuwaharaFilterTex; };
+sampler2D KuwaharaFilter { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_KuwaharaFilter { Texture = AFXTemp1::AFX_RenderTex1; };
 void CS_EndPass(uint3 tid : SV_DISPATCHTHREADID) { tex2Dstore(Common::s_AcerolaBuffer, tid.xy, tex2Dfetch(KuwaharaFilter, tid.xy)); }
 
 /* Basic Kuwahara Filter */
@@ -231,15 +232,12 @@ void Generalized(in float2 uv, in float depth, out float4 output) {
 
 /* Anisotropic Kuwahara Filter */
 
-texture2D AFX_StructureTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D StructureTensor { Texture = AFX_StructureTensorTex; };
-storage2D s_StructureTensor { Texture = AFX_StructureTensorTex; };
-texture2D AFX_BlurredTensorTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D BlurredTensor { Texture = AFX_BlurredTensorTex; };
-storage2D s_BlurredTensor { Texture = AFX_BlurredTensorTex; };
-texture2D AFX_TFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D TFM { Texture = AFX_TFMTex; };
-storage2D s_TFM { Texture = AFX_TFMTex; };
+sampler2D StructureTensor { Texture = AFXTemp2::AFX_RenderTex2; };
+storage2D s_StructureTensor { Texture = AFXTemp2::AFX_RenderTex2; };
+sampler2D BlurredTensor { Texture = AFXTemp1::AFX_RenderTex1; };
+storage2D s_BlurredTensor { Texture = AFXTemp1::AFX_RenderTex1; };
+sampler2D TFM { Texture = AFXTemp2::AFX_RenderTex2; };
+storage2D s_TFM { Texture = AFXTemp2::AFX_RenderTex2; };
 
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));

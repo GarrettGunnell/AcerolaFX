@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform float _Gamma <
     ui_min = 0.0f; ui_max = 5.0f;
@@ -7,8 +8,7 @@ uniform float _Gamma <
     ui_tooltip = "Adjust gamma correction.";
 > = 1.0f;
 
-texture2D AFX_GammaTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Gamma { Texture = AFX_GammaTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Gamma { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Gamma, uv).rgba; }
 
 float4 PS_Gamma(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -19,7 +19,7 @@ float4 PS_Gamma(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET
 
 technique AFX_Gamma < ui_label = "Gamma"; ui_tooltip = "(LDR) Adjusts the gamma correction of the screen."; > {
     pass {
-        RenderTarget = AFX_GammaTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Gamma;

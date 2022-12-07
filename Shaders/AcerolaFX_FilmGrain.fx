@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform float _GrainIntensity <
     ui_min = 0.0f; ui_max = 2.0f;
@@ -56,8 +57,7 @@ uniform int frameCount < source = "framecount"; >;
 #define AFX_NOISETEX_HEIGHT BUFFER_HEIGHT / PWRTWO(AFX_NOISE_DOWNSCALE_FACTOR)
 
 
-texture2D AFX_FilmGrainTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D FilmGrain { Texture = AFX_FilmGrainTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D FilmGrain { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(FilmGrain, uv).rgba; }
 
 texture2D AFX_NoiseGrainTex { Width = AFX_NOISETEX_WIDTH; Height = AFX_NOISETEX_HEIGHT; Format = R32F; }; 
@@ -159,7 +159,7 @@ technique AFX_FilmGrain < ui_label = "Film Grain"; ui_tooltip = "(HDR/LDR) Appli
     }
 
     pass {
-        RenderTarget = AFX_FilmGrainTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_FilmGrain;

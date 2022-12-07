@@ -1,4 +1,4 @@
-#include "AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_Common.fxh"
 
 uniform uint _BlurMode <
     ui_type = "combo";

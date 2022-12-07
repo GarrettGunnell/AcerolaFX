@@ -3,12 +3,8 @@
 #define AFX_PI 3.14159265358979323846f
 
 namespace Common {
-    texture2D AcerolaBufferTex {
-        Width = BUFFER_WIDTH;
-        Height = BUFFER_HEIGHT;
-
-        Format = RGBA16F;
-    }; sampler2D AcerolaBuffer { Texture = AcerolaBufferTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+    texture2D AcerolaBufferTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
+    sampler2D AcerolaBuffer { Texture = AcerolaBufferTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
     sampler2D AcerolaBufferLinear { Texture = AcerolaBufferTex; };
     storage2D s_AcerolaBuffer { Texture = AcerolaBufferTex; };
 
@@ -20,7 +16,7 @@ namespace Common {
     sampler2D AcerolaBufferRepeatLinear { Texture = AcerolaBufferTex; AddressU = REPEAT; AddressV = REPEAT; AddressW = REPEAT; };
     sampler2D AcerolaBufferBorder { Texture = AcerolaBufferTex; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
     sampler2D AcerolaBufferBorderLinear { Texture = AcerolaBufferTex; AddressU = BORDER; AddressV = BORDER; AddressW = BORDER; };
-
+    
     float Luminance(float3 color) {
         return max(0.00001f, dot(color, float3(0.2127f, 0.7152f, 0.0722f)));
     }

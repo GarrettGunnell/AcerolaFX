@@ -1,5 +1,5 @@
-#include "AcerolaFX_Common.fxh"
-#include "AcerolaFX_BokehKernels.fxh"
+#include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_BokehKernels.fxh"
 
 uniform float _FocusDistance <
     ui_min = 0.01f; ui_max = 1.0f;

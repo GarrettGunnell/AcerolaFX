@@ -1,5 +1,6 @@
-#include "AcerolaFX_Common.fxh"
-#include "AcerolaFX_XeGTAO.fxh"
+#include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_XeGTAO.fxh"
 
 uniform float _EffectRadius <
     ui_category = "SSAO Settings";
@@ -95,10 +96,7 @@ uniform float _SigmaR <
     #define AFX_DEBUG_SSAO 0
 #endif
 
-texture2D AFX_AOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D AO { Texture = AFX_AOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_AO { Texture = AFX_AOTex; };
-float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AO, uv); }
+float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AFXTemp1::RenderTex, uv); }
 
 texture2D AFX_OutDepthsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
 sampler2D OutDepths { Texture = AFX_OutDepthsTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -116,19 +114,14 @@ texture2D AFX_OutWorkingAOTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Fo
 sampler2D OutWorkingAO { Texture = AFX_OutWorkingAOTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_OutWorkingAO { Texture = AFX_OutWorkingAOTex; };
 
-texture2D AFX_AOOutputTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
-sampler2D AOOutput { Texture = AFX_AOOutputTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_AOOutput { Texture = AFX_AOOutputTex; };
+#define AFX_DENOISE_BLUR (1e4f)
 
+#define AFX_NUM_THREADS_X (8)
+#define AFX_NUM_THREADS_Y (8)
 
-#define DENOISE_BLUR (1e4f)
-
-#define NUM_THREADS_X (8)
-#define NUM_THREADS_Y (8)
-
-#define XE_HILBERT_LEVEL (6U)
-#define XE_HILBERT_WIDTH (1U << XE_HILBERT_LEVEL)
-#define XE_HILBERT_AREA (XE_HILBERT_WIDTH * XE_HILBERT_WIDTH)
+#define AFX_XE_HILBERT_LEVEL (6U)
+#define AFX_XE_HILBERT_WIDTH (1U << AFX_XE_HILBERT_LEVEL)
+#define AFX_XE_HILBERT_AREA (AFX_XE_HILBERT_WIDTH * AFX_XE_HILBERT_WIDTH)
 
 #define PI (3.1415926535897932384626433832795)
 #define HALF_PI (1.5707963267948966192313216916398)
@@ -136,15 +129,15 @@ storage2D s_AOOutput { Texture = AFX_AOOutputTex; };
 uint HilbertIndex(uint2 pos) {
     uint index = 0U;
 
-    for (uint curLevel = XE_HILBERT_WIDTH / 2U; curLevel > 0U; curLevel /= 2U) {
+    for (uint curLevel = AFX_XE_HILBERT_WIDTH / 2U; curLevel > 0U; curLevel /= 2U) {
         uint regionX = (pos.x & curLevel) > 0U;
         uint regionY = (pos.y & curLevel) > 0U;
 
         index += curLevel * curLevel * ((3U * regionX) ^ regionY);
         if (regionY == 0U) {
             if (regionX == 1U) {
-                pos.x = uint((XE_HILBERT_WIDTH - 1U)) - pos.x;
-                pos.y = uint((XE_HILBERT_WIDTH - 1U)) - pos.y;
+                pos.x = uint((AFX_XE_HILBERT_WIDTH - 1U)) - pos.x;
+                pos.y = uint((AFX_XE_HILBERT_WIDTH - 1U)) - pos.y;
             }
 
             uint temp = pos.x;
@@ -359,7 +352,7 @@ void AddSample(float4 ssaoValue, float edgeValue, inout float4 sum, inout float 
 void AO_Output(uint2 pixCoord, float outputValue, bool finalApply) {
     float visibility = outputValue * ((finalApply) ? (1.5f) : (1));
 
-    tex2Dstore(s_AOOutput, pixCoord, visibility * 255.0f + 0.5f);
+    tex2Dstore(s_OutDepths, pixCoord, visibility * 255.0f + 0.5f);
 }
 
 void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
@@ -368,7 +361,7 @@ void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
 
     bool finalApply = true;
 
-    const float blurAmount = (finalApply) ? DENOISE_BLUR : (DENOISE_BLUR / 5.0f);
+    const float blurAmount = (finalApply) ? AFX_DENOISE_BLUR : (AFX_DENOISE_BLUR / 5.0f);
     const float diagWeight = 0.85f * 0.5f;
 
     float aoTerm[2];
@@ -442,26 +435,6 @@ void CS_Denoise(uint2 tid : SV_DISPATCHTHREADID) {
     }
 }
 
-float4 PS_ApplyAO(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = tex2D(Common::AcerolaBuffer, uv);
-    float visibility = tex2D(OutWorkingAO, uv).r / 255.0f;
-
-    float3 normal = ReShade::GetScreenSpaceNormal(uv);
-    visibility = lerp(visibility, 1.0f, normal.y * normal.y * normal.y);
-
-    float3 a =  2.0404 * col.rgb - 0.3324;
-    float3 b = -4.7951 * col.rgb + 0.6417;
-    float3 c =  2.7552 * col.rgb + 0.6903;
-
-    float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
-
-    #if AFX_DEBUG_SSAO == 1
-        return visibility;
-    #else
-        return float4(col.rgb * output, col.a);
-    #endif
-}
-
 float gaussR(float sigma, float dist) {
 	return exp(-(dist * dist) / (2.0 * sigma * sigma));
 }
@@ -471,13 +444,12 @@ float  gaussD(float sigma, int x, int y) {
 }
 
 void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
-    // Filter
     const int kernelRadius = (int)ceil(2.0f * _SigmaD);
 
     float sum = 0.0f;
     float sumWeight = 0.0f;
 
-    float center = tex2Dfetch(AOOutput, tid.xy).r / 255.0f;
+    float center = tex2Dfetch(OutDepths, tid.xy).r / 255.0f;
 
     int upper = ((kernelRadius - 1) * 0.5f);
     int lower = -upper;
@@ -486,7 +458,7 @@ void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
         for(int y = lower; y <= upper; ++y) {
             int2 offset = int2(x, y);
 
-            float intKerPos = tex2Dfetch(AOOutput, tid.xy + offset).r / 255.0f;
+            float intKerPos = tex2Dfetch(OutDepths, tid.xy + offset).r / 255.0f;
             float weight = gaussD(_SigmaD, (tid.x + x) - tid.x, (tid.y + y) - tid.y) * gaussR(_SigmaR, intKerPos - center);
 
             sumWeight += weight;
@@ -495,6 +467,8 @@ void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
     }
 
     float visibility = sumWeight > 0 ? sum / (sumWeight + 0.001f) : center;
+
+    // Apply AO
     float4 col = tex2Dfetch(Common::AcerolaBuffer, tid.xy);
 
     float3 normal = ReShade::GetScreenSpaceNormal(tid.xy * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT));
@@ -507,9 +481,9 @@ void CS_BilateralFilter(uint3 tid : SV_DISPATCHTHREADID) {
     float3 output = max(visibility, ((visibility * a + b) * visibility + c) * visibility);
 
     #if AFX_DEBUG_SSAO == 1
-        tex2Dstore(s_AO, tid.xy, visibility);
+        tex2Dstore(AFXTemp1::s_RenderTex, tid.xy, visibility);
     #else
-        tex2Dstore(s_AO, tid.xy, float4(col.rgb * output, col.a));
+        tex2Dstore(AFXTemp1::s_RenderTex, tid.xy, float4(col.rgb * output, col.a));
     #endif
 }
 
@@ -524,27 +498,27 @@ technique AFX_SetupSSAO < hidden = true; enabled = true; timeout = 1; > {
 technique AFX_XeGTAO < ui_label = "XeGTAO"; ui_tooltip = "(LDR) Approximate ground truth ambient occlusion for better lighting."; > {
 
     pass PrefilterDepths {
-        ComputeShader = CS_PrefilterDepths<NUM_THREADS_X, NUM_THREADS_Y>;
-        DispatchSizeX = (BUFFER_WIDTH + NUM_THREADS_X - 1) / NUM_THREADS_X;
-        DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
+        ComputeShader = CS_PrefilterDepths<AFX_NUM_THREADS_X, AFX_NUM_THREADS_Y>;
+        DispatchSizeX = (BUFFER_WIDTH + AFX_NUM_THREADS_X - 1) / AFX_NUM_THREADS_X;
+        DispatchSizeY = (BUFFER_HEIGHT + AFX_NUM_THREADS_Y - 1) / AFX_NUM_THREADS_Y;
     }
 
     pass MainPass {
-        ComputeShader = CS_MainPass<NUM_THREADS_X, NUM_THREADS_Y>;
-        DispatchSizeX = (BUFFER_WIDTH + NUM_THREADS_X - 1) / NUM_THREADS_X;
-        DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
+        ComputeShader = CS_MainPass<AFX_NUM_THREADS_X, AFX_NUM_THREADS_Y>;
+        DispatchSizeX = (BUFFER_WIDTH + AFX_NUM_THREADS_X - 1) / AFX_NUM_THREADS_X;
+        DispatchSizeY = (BUFFER_HEIGHT + AFX_NUM_THREADS_Y - 1) / AFX_NUM_THREADS_Y;
     }
 
     pass Denoise {
-        ComputeShader = CS_Denoise<NUM_THREADS_X, NUM_THREADS_Y>;
-        DispatchSizeX = (BUFFER_WIDTH + (NUM_THREADS_X * 2) - 1) / (NUM_THREADS_X * 2);
-        DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
+        ComputeShader = CS_Denoise<AFX_NUM_THREADS_X, AFX_NUM_THREADS_Y>;
+        DispatchSizeX = (BUFFER_WIDTH + (AFX_NUM_THREADS_X * 2) - 1) / (AFX_NUM_THREADS_X * 2);
+        DispatchSizeY = (BUFFER_HEIGHT + AFX_NUM_THREADS_Y - 1) / AFX_NUM_THREADS_Y;
     }
 
     pass BilateralFilter {
-        ComputeShader = CS_BilateralFilter<NUM_THREADS_X, NUM_THREADS_Y>;
-        DispatchSizeX = (BUFFER_WIDTH + NUM_THREADS_X - 1) / NUM_THREADS_X;
-        DispatchSizeY = (BUFFER_HEIGHT + NUM_THREADS_Y - 1) / NUM_THREADS_Y;
+        ComputeShader = CS_BilateralFilter<AFX_NUM_THREADS_X, AFX_NUM_THREADS_Y>;
+        DispatchSizeX = (BUFFER_WIDTH + AFX_NUM_THREADS_X - 1) / AFX_NUM_THREADS_X;
+        DispatchSizeY = (BUFFER_HEIGHT + AFX_NUM_THREADS_Y - 1) / AFX_NUM_THREADS_Y;
     }
 
     pass EndPass {

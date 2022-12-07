@@ -1,5 +1,5 @@
-#include "AcerolaFX_Common.fxh"
-#include "AcerolaFX_Downscales.fxh"
+#include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_Downscales.fxh"
 
 #ifndef AFX_SAMPLE_SKY
     #define AFX_SAMPLE_SKY 0

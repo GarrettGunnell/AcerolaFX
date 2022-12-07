@@ -1,4 +1,4 @@
-#include "AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_Common.fxh"
 
 #ifndef AFX_DOWNSCALE_FACTOR
     #define AFX_DOWNSCALE_FACTOR 1

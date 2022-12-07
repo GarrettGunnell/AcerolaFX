@@ -72,7 +72,7 @@ uniform float _Offset <
     ui_tooltip = "Offset distance at which effect starts to falloff.";
 > = 0.0f;
 
-sampler2D Normals { Texture = AFXTemp1::AFX_RenderTexHDR1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Normals { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 
 texture2D AFX_EdgeDetectTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
 sampler2D EdgeDetect { Texture = AFX_EdgeDetectTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -160,7 +160,7 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
 
 technique AFX_EdgeDetect < ui_label = "Edge Detector"; ui_tooltip = "(LDR) Attempts to detect edges of the image."; > {
     pass {
-        RenderTarget = AFXTemp1::AFX_RenderTexHDR1;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_CalculateNormals;

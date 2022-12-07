@@ -41,7 +41,7 @@ uniform bool _MaskUI <
     ui_tooltip = "Mask UI from crt effect.";
 > = true;
 
-sampler2D CRT { Texture = AFXTemp1::AFX_RenderTexHDR1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D CRT { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(CRT, uv).rgba; }
 
 float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -73,7 +73,7 @@ float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
 
 technique AFX_CRT  <ui_label = "CRT"; ui_tooltip = "(LDR) Makes the screen look like a CRT television."; >  {
     pass {
-        RenderTarget = AFXTemp1::AFX_RenderTexHDR1;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_CRT;

@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform float _Zoom <
     ui_min = 0.0f; ui_max = 5.0f;
@@ -31,7 +32,7 @@ uniform int _SampleMode <
 > = 0;
 
 texture2D AFX_ZoomTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Zoom { Texture = AFX_ZoomTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Zoom { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Zoom, uv).rgba; }
 
 
@@ -72,7 +73,7 @@ float4 PS_Zoom(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET 
 
 technique AFX_Zoom < ui_label = "Zoom"; ui_tooltip = "(LDR) Adjusts the Zoom correction of the screen."; > {
     pass {
-        RenderTarget = AFX_ZoomTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Zoom;

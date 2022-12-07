@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform int _Filter <
     ui_type = "combo";
@@ -45,8 +46,7 @@ float3 GetMax(float3 x, float3 y, float3 z) {
     return max(x, max(y, z));
 }
 
-texture2D AFX_AdaptiveSharpnessTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D AdaptiveSharpness { Texture = AFX_AdaptiveSharpnessTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D AdaptiveSharpness { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(AdaptiveSharpness, uv).rgba; }
 
 void Basic(float2 uv, out float3 output) {
@@ -121,7 +121,7 @@ float4 PS_AdaptiveSharpness(float4 position : SV_POSITION, float2 uv : TEXCOORD)
 
 technique AFX_AdaptiveSharpness <ui_label = "Sharpness"; ui_tooltip = "(LDR) Increases the contrast between edges to create the illusion of high detail."; > {
     pass Sharpen {
-        RenderTarget = AFX_AdaptiveSharpnessTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_AdaptiveSharpness;

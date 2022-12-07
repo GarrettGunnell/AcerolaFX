@@ -1,4 +1,8 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_TempTex2.fxh"
+#include "Includes/AcerolaFX_TempTex3.fxh"
+#include "Includes/AcerolaFX_TempTex4.fxh"
 
 uniform bool _UseFlow <
     ui_category_closed = true;
@@ -353,18 +357,13 @@ uniform float _BlendStrength <
 #define AFX_HATCH_TEXTURE_HEIGHT 512
 #endif
 
-texture2D AFX_CustomHatchTex < source = AFX_HATCH_TEXTURE_PATH; > { Width = AFX_HATCH_TEXTURE_WIDTH; Height = AFX_HATCH_TEXTURE_HEIGHT; };
-sampler2D CustomHatch { Texture = AFX_CustomHatchTex; AddressU = REPEAT; AddressV = REPEAT; };
+sampler2D Lab { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D HorizontalBlur { Texture = AFXTemp3::AFX_RenderTex3; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D DOGTFM { Texture = AFXTemp2::AFX_RenderTex2; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 
-texture2D AFX_HorizontalBlurTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D HorizontalBlur { Texture = AFX_HorizontalBlurTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-texture2D AFX_DOGTFMTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D DOGTFM { Texture = AFX_DOGTFMTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-texture2D AFX_DifferenceOfGaussiansTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-storage2D s_DifferenceOfGaussians { Texture = AFX_DifferenceOfGaussiansTex; };
-texture2D AFX_LabTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Lab { Texture = AFX_LabTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D DifferenceOfGaussians { Texture = AFXTemp4::AFX_RenderTex4; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_DifferenceOfGaussians { Texture = AFXTemp4::AFX_RenderTex4; };
+
 texture2D AFX_HatchTex < source = "hatch.png"; > { Width = 512; Height = 512; };
 sampler2D Hatch { Texture = AFX_HatchTex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
 texture2D AFX_Hatch2Tex < source = "hatch 2.png"; > { Width = 512; Height = 512; };
@@ -373,8 +372,10 @@ texture2D AFX_Hatch3Tex < source = "hatch 3.png"; > { Width = 512; Height = 512;
 sampler2D Hatch3 { Texture = AFX_Hatch3Tex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
 texture2D AFX_Hatch4Tex < source = "hatch 4.png"; > { Width = 512; Height = 512; };
 sampler2D Hatch4 { Texture = AFX_Hatch4Tex; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR; AddressU = REPEAT; AddressV = REPEAT; };
-texture2D AFX_GaussiansBlendedTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
-sampler2D GaussiansBlended { Texture = AFX_GaussiansBlendedTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+texture2D AFX_CustomHatchTex < source = AFX_HATCH_TEXTURE_PATH; > { Width = AFX_HATCH_TEXTURE_WIDTH; Height = AFX_HATCH_TEXTURE_HEIGHT; };
+sampler2D CustomHatch { Texture = AFX_CustomHatchTex; AddressU = REPEAT; AddressV = REPEAT; };
+
+sampler2D GaussiansBlended { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(GaussiansBlended, uv).rgba; }
 
 float gaussian(float sigma, float pos) {
@@ -771,7 +772,7 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
 
 technique AFX_DifferenceOfGaussians < ui_label = "Difference Of Gaussians"; > {
     pass {
-        RenderTarget = AFX_LabTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_RGBtoLAB;
@@ -785,42 +786,42 @@ technique AFX_DifferenceOfGaussians < ui_label = "Difference Of Gaussians"; > {
     }
 
     pass {
-        RenderTarget = AFX_HorizontalBlurTex;
+        RenderTarget = AFXTemp3::AFX_RenderTex3;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_TFMHorizontalBlur;
     }
 
     pass {
-        RenderTarget = AFX_DOGTFMTex;
+        RenderTarget = AFXTemp2::AFX_RenderTex2;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_TFMVerticalBlur;
     }
 
     pass {
-        RenderTarget = AFX_HorizontalBlurTex;
+        RenderTarget = AFXTemp3::AFX_RenderTex3;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_HorizontalBlur;
     }
 
     pass {
-        RenderTarget = AFX_DifferenceOfGaussiansTex;
+        RenderTarget = AFXTemp4::AFX_RenderTex4;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_VerticalBlur;
     }
 
     pass {
-        RenderTarget = AFX_HorizontalBlurTex;
+        RenderTarget = AFXTemp3::AFX_RenderTex3;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_AntiAlias;
     }
 
     pass {
-        RenderTarget = AFX_GaussiansBlendedTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_ColorBlend;

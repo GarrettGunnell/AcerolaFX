@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform int _Tonemapper <
     ui_type = "combo";
@@ -135,8 +136,7 @@ float3 Hable(float3 col) {
     return saturate(Cout);
 }
 
-texture2D AFX_ToneMapTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D ToneMap { Texture = AFX_ToneMapTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D ToneMap { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ToneMap, uv).rgba; }
 
 float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -172,7 +172,7 @@ float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 technique AFX_Tonemapping <ui_label = "Tonemapping"; ui_tooltip = "(HDR -> LDR) Converts all previous HDR passes into LDR."; > {
     pass {
-        RenderTarget = AFX_ToneMapTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Tonemap;

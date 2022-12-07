@@ -31,8 +31,8 @@ uniform float _Sigma <
     #define AFX_BLUR_PASSES 1
 #endif
 
-sampler2D BlurPing { Texture = AFXTemp1::AFX_RenderTex1; };
-storage2D s_BlurPing { Texture = AFXTemp1::AFX_RenderTex1; };
+sampler2D BlurPing { Texture = AFXTemp1::AFX_RenderTexHDR1; };
+storage2D s_BlurPing { Texture = AFXTemp1::AFX_RenderTexHDR1; };
 
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));

@@ -37,7 +37,7 @@ uniform float _ZProjection <
     ui_tooltip = "Adjust Camera Z Projection (depth of the camera frustum).";
 > = 1000.0f;
 
-sampler2D Fog { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Fog { Texture = AFXTemp1::AFX_RenderTexHDR1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Fog, uv).rgba; }
 
 float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -63,7 +63,7 @@ float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
 
 technique AFX_Fog <ui_label = "Fog"; ui_tooltip = "(LDR) Applies a color to distant pixels to exaggerate distance."; >  {
     pass {
-        RenderTarget = AFXTemp1::AFX_RenderTex1;
+        RenderTarget = AFXTemp1::AFX_RenderTexHDR1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_DistanceFog;

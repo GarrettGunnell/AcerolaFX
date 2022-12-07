@@ -87,7 +87,7 @@ uniform float3 _Saturation <
     ui_tooltip = "Adjust saturation.";
 > = 1.0f;
 
-sampler2D ColorCorrection { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D ColorCorrection { Texture = AFXTemp1::AFX_RenderTexHDR1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ColorCorrection, uv).rgba; }
 
 float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -121,7 +121,7 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
 technique AFX_ColorCorrection  <ui_label = "Color Correct"; ui_tooltip = "(HDR/LDR) A suite of color correction effects."; >  {
     pass ColorCorrect {
-        RenderTarget = AFXTemp1::AFX_RenderTex1;
+        RenderTarget = AFXTemp1::AFX_RenderTexHDR1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_ColorCorrect;

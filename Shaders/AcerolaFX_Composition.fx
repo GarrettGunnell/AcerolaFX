@@ -9,7 +9,7 @@ uniform uint _Fraction <
 > = 3;
 
 
-sampler2D Composition { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Composition { Texture = AFXTemp1::AFX_RenderTexHDR1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Composition, uv).rgba; }
 
 float4 PS_Composition(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -28,7 +28,7 @@ float4 PS_Composition(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
 
 technique AFX_Composition < ui_label = "Composition"; ui_tooltip = "Overlay fraction lines to help with shot composition."; > {
     pass {
-        RenderTarget = AFXTemp1::AFX_RenderTex1;
+        RenderTarget = AFXTemp1::AFX_RenderTexHDR1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Composition;

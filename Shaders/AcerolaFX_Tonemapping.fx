@@ -136,7 +136,7 @@ float3 Hable(float3 col) {
     return saturate(Cout);
 }
 
-sampler2D ToneMap { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D ToneMap { Texture = AFXTemp1::AFX_RenderTexHDR1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ToneMap, uv).rgba; }
 
 float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -172,7 +172,7 @@ float4 PS_Tonemap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 technique AFX_Tonemapping <ui_label = "Tonemapping"; ui_tooltip = "(HDR -> LDR) Converts all previous HDR passes into LDR."; > {
     pass {
-        RenderTarget = AFXTemp1::AFX_RenderTex1;
+        RenderTarget = AFXTemp1::AFX_RenderTexHDR1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Tonemap;

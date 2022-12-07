@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform uint _BlurMode <
     ui_type = "combo";
@@ -30,9 +31,8 @@ uniform float _Sigma <
     #define AFX_BLUR_PASSES 1
 #endif
 
-texture2D AFX_BlurPingTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D BlurPing { Texture = AFX_BlurPingTex; };
-storage2D s_BlurPing { Texture = AFX_BlurPingTex; };
+sampler2D BlurPing { Texture = AFXTemp1::AFX_RenderTex1; };
+storage2D s_BlurPing { Texture = AFXTemp1::AFX_RenderTex1; };
 
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));

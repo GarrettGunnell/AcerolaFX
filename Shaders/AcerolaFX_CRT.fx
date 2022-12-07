@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform float _Curvature <
     ui_min = 1.0f; ui_max = 10.0f;
@@ -40,8 +41,7 @@ uniform bool _MaskUI <
     ui_tooltip = "Mask UI from crt effect.";
 > = true;
 
-texture2D AFX_CRTTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D CRT { Texture = AFX_CRTTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D CRT { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(CRT, uv).rgba; }
 
 float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -73,7 +73,7 @@ float4 PS_CRT(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
 
 technique AFX_CRT  <ui_label = "CRT"; ui_tooltip = "(LDR) Makes the screen look like a CRT television."; >  {
     pass {
-        RenderTarget = AFX_CRTTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_CRT;

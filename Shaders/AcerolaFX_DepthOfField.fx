@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 #include "Includes/AcerolaFX_BokehKernels.fxh"
 
 uniform float _FocusDistance <
@@ -29,8 +30,7 @@ uniform int _SampleOffset <
     ui_tooltip = "Adjust bokeh sample distance between pixels.";
 > = 1;
 
-texture2D AFX_DepthOfFieldTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D DepthOfField { Texture = AFX_DepthOfFieldTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D DepthOfField { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(DepthOfField, uv).rgba; }
 
 texture2D AFX_ConfusionTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R32F; }; 
@@ -111,7 +111,7 @@ technique AFX_DepthOfField < ui_label = "Depth Of Field"; ui_tooltip = "(HDR/LDR
     }
 
     pass {
-        RenderTarget = AFX_DepthOfFieldTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Bokeh;

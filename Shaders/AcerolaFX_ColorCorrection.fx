@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform bool _HDR <
     ui_label = "HDR";
@@ -86,8 +87,7 @@ uniform float3 _Saturation <
     ui_tooltip = "Adjust saturation.";
 > = 1.0f;
 
-texture2D AFX_ColorCorrectionTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D ColorCorrection { Texture = AFX_ColorCorrectionTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D ColorCorrection { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ColorCorrection, uv).rgba; }
 
 float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -121,7 +121,7 @@ float4 PS_ColorCorrect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
 
 technique AFX_ColorCorrection  <ui_label = "Color Correct"; ui_tooltip = "(HDR/LDR) A suite of color correction effects."; >  {
     pass ColorCorrect {
-        RenderTarget = AFX_ColorCorrectionTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_ColorCorrect;

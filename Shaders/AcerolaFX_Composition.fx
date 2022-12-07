@@ -1,4 +1,5 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform uint _Fraction <
 	ui_type = "slider";
@@ -8,8 +9,7 @@ uniform uint _Fraction <
 > = 3;
 
 
-texture2D AFX_CompositionTex < pooled = true; > { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; }; 
-sampler2D Composition { Texture = AFX_CompositionTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Composition { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Composition, uv).rgba; }
 
 float4 PS_Composition(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -28,7 +28,7 @@ float4 PS_Composition(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
 
 technique AFX_Composition < ui_label = "Composition"; ui_tooltip = "Overlay fraction lines to help with shot composition."; > {
     pass {
-        RenderTarget = AFX_CompositionTex;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Composition;

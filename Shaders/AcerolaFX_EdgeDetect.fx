@@ -6,6 +6,13 @@ uniform float3 _EdgeColor <
     ui_type = "color";
 > = 0.0f;
 
+uniform float _Alpha <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Alpha";
+    ui_type = "drag";
+    ui_tooltip = "Adjust edge transparency.";
+> = 1.0f;
+
 uniform bool _UseDepth <
     ui_label = "Use Depth";
     ui_tooltip = "Use depth values to determine edges.";
@@ -148,7 +155,7 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             output = 0.0f;
     }
 
-    return float4(lerp(col.rgb, _EdgeColor.rgb, saturate(output)), 1.0f);
+    return float4(lerp(col.rgb, lerp(col.rgb, _EdgeColor.rgb, saturate(output)), _Alpha), 1.0f);
 }
 
 technique AFX_EdgeDetect < ui_label = "Edge Detector"; ui_tooltip = "(LDR) Attempts to detect edges of the image."; > {

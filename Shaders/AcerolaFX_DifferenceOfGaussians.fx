@@ -571,7 +571,7 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
             v1 = tex2D(DOGTFM, st1).xy * texelSize;
         }
 
-        G /= max(0.000001f, w);
+        G /= max(1.0f, w);
 
         if (_CalcDiffBeforeConvolving) {
             D = G.x;
@@ -667,7 +667,7 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
             v1 = tex2D(DOGTFM, st1).xy * texelSize;
         }
 
-        return G /= w;
+        return G /= max(1.0f, w);
     } else {
         return tex2D(DifferenceOfGaussians, uv);
     }
@@ -754,11 +754,11 @@ float4 PS_ColorBlend(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
             coloredPencil = lerp(coloredPencil, _MaxColor, output.rgb);
 
             return float4(lerp(col.rgb, coloredPencil, _BlendStrength), 1.0f);
-            }
+        }
     }
 
-
-    D = Common::Luminance(output.rgb);
+    if (_EnableHatching)
+        D = Common::Luminance(output.rgb);
     if (_BlendMode == 0)
         output.rgb = lerp(_MinColor, _MaxColor, D.r);
     if (_BlendMode == 1)

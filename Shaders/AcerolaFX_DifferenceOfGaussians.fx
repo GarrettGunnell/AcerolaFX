@@ -376,6 +376,7 @@ texture2D AFX_CustomHatchTex < source = AFX_HATCH_TEXTURE_PATH; > { Width = AFX_
 sampler2D CustomHatch { Texture = AFX_CustomHatchTex; AddressU = REPEAT; AddressV = REPEAT; };
 
 sampler2D GaussiansBlended { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+//float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return float4(tex2D(DOGTFM, uv).rg, 0.0f, 1.0f); }
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(GaussiansBlended, uv).rgba; }
 
 float gaussian(float sigma, float pos) {
@@ -445,8 +446,9 @@ float4 PS_TFMVerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) :
 
     float lambda1 = 0.5f * (g.y + g.x + sqrt(g.y * g.y - 2.0f * g.x * g.y + g.x * g.x + 4.0 * g.z * g.z));
     float2 d = float2(g.x - lambda1, g.z);
+    if (d.x > 0) d.x = -d.x;
 
-    return length(d) ? float4(normalize(d), sqrt(lambda1), 1.0f) : float4(0.0f, 0.0f, 0.0f, 1.0f);
+    return length(d) ? float4(normalize(d), sqrt(lambda1), 1.0f) : float4(0.0f, 1.0f, 0.0f, 1.0f);
 }
 
 float4 PS_HorizontalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -510,8 +512,9 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
     if (_UseFlow) {
         kernelRadius = _SigmaM * 2 > 1 ? _SigmaM * 2 : 1;
 
-        float2 G = 0.0f;
-        float2 w = 0.0f;
+        float3 c = tex2D(HorizontalBlur, uv).rgb;
+        float2 G = _CalcDiffBeforeConvolving ? float2(c.b, 0.0f) : c.rg;
+        float2 w = 1.0f;
 
         float2 v = tex2D(DOGTFM, uv).xy * texelSize;
         float2 stepSize = _LineIntegralStepSize;
@@ -520,7 +523,7 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
         float2 v0 = v;
 
         [loop]
-        for (int d = 0; d < kernelRadius; ++d) {
+        for (int d = 1; d <= kernelRadius; ++d) {
             st0 += v0 * stepSize.x;
             float3 c = tex2D(HorizontalBlur, st0).rgb;
             float gauss1 = gaussian(_SigmaM, d);
@@ -546,7 +549,7 @@ float4 PS_VerticalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV
         float2 v1 = v;
 
         [loop]
-        for (int d = 0; d < kernelRadius; ++d) {
+        for (int d = 1; d <= kernelRadius; ++d) {
             st1 -= v1 * stepSize.y;
             float3 c = tex2D(HorizontalBlur, st1).rgb;
             float gauss1 = gaussian(_SigmaM, d);
@@ -628,8 +631,8 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
         
         float kernelSize = _SigmaA * 2;
 
-        float4 G = 0.0f;
-        float w = 0.0f;
+        float4 G = tex2D(DifferenceOfGaussians, uv);
+        float w = 1.0f;
 
         float2 v = tex2D(DOGTFM, uv).xy * texelSize;
         float2 stepSize = _AntiAliasStepSize;
@@ -638,7 +641,7 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
         float2 v0 = v;
 
         [loop]
-        for (int d = 0; d < kernelSize; ++d) {
+        for (int d = 1; d <= kernelSize; ++d) {
             st0 += v0 * stepSize.x;
             float4 c = tex2D(DifferenceOfGaussians, st0);
             float gauss1 = gaussian(_SigmaA, d);
@@ -646,14 +649,14 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
             G += gauss1 * c;
             w += gauss1;
 
-            v0 = tex2D(DOGTFM, uv).xy * texelSize;
+            v0 = tex2D(DOGTFM, st0).xy * texelSize;
         }
 
         float2 st1 = uv;
         float2 v1 = v;
 
         [loop]
-        for (int d = 0; d < kernelSize; ++d) {
+        for (int d = 1; d <= kernelSize; ++d) {
             st1 -= v1 * stepSize.y;
             float4 c = tex2D(DifferenceOfGaussians, st1);
             float gauss1 = gaussian(_SigmaA, d);
@@ -661,7 +664,7 @@ float4 PS_AntiAlias(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
             G += gauss1 * c;
             w += gauss1;
 
-            v1 = tex2D(DOGTFM, uv).xy * texelSize;
+            v1 = tex2D(DOGTFM, st1).xy * texelSize;
         }
 
         return G /= w;

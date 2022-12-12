@@ -23,7 +23,7 @@ uniform float _SigmaC <
 uniform float _SigmaM <
     ui_category_closed = true;
     ui_category = "Edge Tangent Flow Settings";
-    ui_min = 0.0f; ui_max = 5.0f;
+    ui_min = 0.0f; ui_max = 20.0f;
     ui_label = "Line Integral Deviation";
     ui_type = "slider";
     ui_tooltip = "Adjust standard deviation for smoothing of the flow difference of gaussians.";
@@ -46,7 +46,7 @@ uniform bool _CalcDiffBeforeConvolving <
 uniform float _SigmaE <
     ui_category_closed = true;
     ui_category = "Difference Of Gaussians Settings";
-    ui_min = 0.0f; ui_max = 5.0f;
+    ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Difference Of Gaussians Deviation";
     ui_type = "slider";
     ui_tooltip = "Adjust the deviation of the color buffer gaussian blurring.";
@@ -80,7 +80,7 @@ uniform bool _SmoothEdges <
 uniform float _SigmaA <
     ui_category_closed = true;
     ui_category = "Anti Aliasing Settings";
-    ui_min = 0.0f; ui_max = 5.0f;
+    ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Edge Smooth Deviation";
     ui_type = "slider";
     ui_tooltip = "Adjust standard deviation for gaussian blurring of edge lines.";

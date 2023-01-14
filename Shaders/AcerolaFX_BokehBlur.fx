@@ -22,11 +22,6 @@ uniform float _Strength <
     ui_tooltip = "Adjust strength of the depth of field.";
 > = 1.0f;
 
-uniform bool _Fill <
-    ui_label = "Fill";
-    ui_tooltip = "Fill in undersampling.";
-> = true;
-
 texture2D AFX_CoC { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG8; };
 sampler2D CoC { Texture = AFX_CoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 

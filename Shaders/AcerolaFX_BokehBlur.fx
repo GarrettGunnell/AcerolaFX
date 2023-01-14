@@ -27,13 +27,22 @@ uniform int _KernelShape <
                "Star\0";
 > = 0;
 
-uniform int _KernelSize <
+uniform int _NearKernelSize <
     ui_category = "Kernel Settings";
     ui_category_closed = true;
     ui_min = 1; ui_max = 13;
-    ui_label = "Kernel Size";
+    ui_label = "Near Kernel Size";
     ui_type = "slider";
-    ui_tooltip = "Size of bokeh kernel";
+    ui_tooltip = "Size of near bokeh kernel";
+> = 6;
+
+uniform int _FarKernelSize <
+    ui_category = "Kernel Settings";
+    ui_category_closed = true;
+    ui_min = 1; ui_max = 13;
+    ui_label = "Far Kernel Size";
+    ui_type = "slider";
+    ui_tooltip = "Size of far bokeh kernel";
 > = 6;
 
 uniform int _KernelRotation <
@@ -329,7 +338,7 @@ int GetShapeRotation(int n) {
 }
 
 float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
-    int kernelSize = _KernelSize;
+    int kernelSize = _NearKernelSize;
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
     float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
     
@@ -356,7 +365,7 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
     }
     
     if (cocNearBlurred > 0.0f) {
-        return lerp(col / (_KernelSize * 2 + 1), brightest, _Exposure);
+        return lerp(col / (kernelSize * 2 + 1), brightest, _Exposure);
     } else {
         return base;
     }
@@ -379,7 +388,7 @@ float4 PS_NearBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
 }
 
 float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
-    int kernelSize = _KernelSize;
+    int kernelSize = _FarKernelSize;
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
     
     float4 col = tex2D(blurPoint, uv);

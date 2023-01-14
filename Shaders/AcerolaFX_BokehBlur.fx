@@ -60,12 +60,26 @@ uniform int _Theta4 <
     ui_tooltip = "Rotation of kernel in fourth blur pass.";
 > = 90;
 
+uniform bool _Intersect <
+    ui_category = "Kernel Settings";
+    ui_category_closed = true;
+    ui_label = "Intersect";
+    ui_tooltip = "Intersect kernels to create different bokeh shapes (refer to user guide).";
+> = true;
+
 uniform bool _Fill <
     ui_category = "Kernel Settings";
     ui_category_closed = true;
     ui_label = "Fill";
     ui_tooltip = "Attempt to fill in undersampling of kernel.";
 > = true;
+
+uniform float _Exposure <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Exposure";
+    ui_type = "drag";
+    ui_tooltip = "Adjust exposure.";
+> = 0.0f;
 
 uniform float _Strength <
     ui_min = 0.0f; ui_max = 3.0f;
@@ -344,6 +358,7 @@ float4 Far(float2 uv, int rotation, sampler2D source) {
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
     
     float4 col = tex2D(source, uv);
+    float4 brightest = col;
     float weightsSum = tex2D(QuarterCoC, uv).y;
 
     float theta = radians(rotation);
@@ -353,13 +368,16 @@ float4 Far(float2 uv, int rotation, sampler2D source) {
     for (int x = -kernelSize; x <= kernelSize; ++x) {
         if (x == 0) continue;
         float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        float4 s = tex2D(source, uv + offset);
+        float weight = tex2D(QuarterCoCLinear, uv + offset).g;
 
-        col += tex2D(source, uv + offset);
-        weightsSum += tex2D(QuarterCoCLinear, uv + offset).g;
+        brightest = max(brightest, s);
+        col += s * weight;
+        weightsSum += weight;
     }
 
-    if (tex2D(QuarterCoC, uv).g > 0.1f) {
-        return col / max(0.01f, weightsSum);
+    if (tex2D(QuarterCoC, uv).g > 0.0f) {
+        return lerp(col / max(0.01f, weightsSum), brightest, _Exposure);
     } else {
         return 0.0f;
     }
@@ -384,13 +402,13 @@ float4 PS_FarBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 float4 PS_CompositeNearKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 n1 = tex2D(NearBlur, uv);
     float4 n2 = tex2D(NearFill, uv);
-    return min(n1, n2);
+    return _Intersect ? min(n1, n2) : max(n1, n2);
 }
 
 float4 PS_CompositeFarKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 f1 = tex2D(FarBlur, uv);
     float4 f2 = tex2D(FarFill, uv);
-    return min(f1, f2);
+    return _Intersect ? min(f1, f2) : max(f1, f2);
 }
 
 float4 PS_NearFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

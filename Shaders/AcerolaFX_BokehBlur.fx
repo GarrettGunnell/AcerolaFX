@@ -15,17 +15,46 @@ uniform float _FocusRange <
     ui_tooltip = "Adjust range at which detail is sharp around the focal plane.";
 > = 20.0f;
 
+uniform int _KernelSize <
+    ui_category = "Kernel Settings";
+    ui_category_closed = true;
+    ui_min = 1; ui_max = 13;
+    ui_label = "Kernel Size";
+    ui_type = "slider";
+    ui_tooltip = "Size of bokeh kernel";
+> = 6;
+
+uniform float _Theta <
+    ui_category = "Kernel Settings";
+    ui_category_closed = true;
+    ui_min = -180; ui_max = 180;
+    ui_label = "Kernel Rotation";
+    ui_type = "slider";
+    ui_tooltip = "Rotation of kernel in first blur pass.";
+> = 0;
+
+uniform float _Theta2 <
+    ui_category = "Kernel Settings";
+    ui_category_closed = true;
+    ui_min = -180; ui_max = 180;
+    ui_label = "Kernel Rotation 2";
+    ui_type = "slider";
+    ui_tooltip = "Rotation of kernel in second blur pass.";
+> = 90;
+
+uniform bool _Fill <
+    ui_category = "Kernel Settings";
+    ui_category_closed = true;
+    ui_label = "Fill";
+    ui_tooltip = "Attempt to fill in undersampling of kernel.";
+> = true;
+
 uniform float _Strength <
     ui_min = 0.0f; ui_max = 3.0f;
     ui_label = "Strength";
     ui_type = "drag";
     ui_tooltip = "Adjust strength of the depth of field.";
 > = 1.0f;
-
-uniform bool _Fill <
-    ui_label = "Fill";
-    ui_tooltip = "Attempt to fill in undersampling of kernel.";
-> = true;
 
 texture2D AFX_CoC { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG8; };
 sampler2D CoC { Texture = AFX_CoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
@@ -62,8 +91,9 @@ texture2D AFX_NearCoCBlur { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2
 sampler2D NearCoCBlur { Texture = AFX_NearCoCBlur; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D NearCoCBlurLinear { Texture = AFX_NearCoCBlur; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
-texture2D AFX_QuarterPing { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RG8; };
+texture2D AFX_QuarterPing { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
 sampler2D QuarterPing { Texture = AFX_QuarterPing; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+sampler2D QuarterPingLinear { Texture = AFX_QuarterPing; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
 sampler2D Bokeh { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 storage2D s_Bokeh { Texture = AFXTemp1::AFX_RenderTex1; };
@@ -242,38 +272,102 @@ float PS_BlurCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
     return coc / 13;
 }
 
-float4 PS_NearBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    int kernelSize = _KernelSize;
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
     float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
     
-    float4 col = tex2D(QuarterColor, uv);
-    if (cocNearBlurred > 0.0f) {
-        [unroll]
-        for (int i = 0; i < 48; ++i) {
-            float2 offset = kernelScale * offsets[i] * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-            col += tex2D(QuarterColorLinear, uv + offset);
-        }
+    float4 base = tex2D(QuarterColor, uv);
+    float4 col = base;
 
-        return col / 49.0f;
+    float theta = radians(_Theta);
+    float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
+
+    [loop]
+    for (int x = -kernelSize; x <= kernelSize; ++x) {
+        if (x == 0) continue;
+        float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        col += tex2D(QuarterColorLinear, uv + offset);
+    }
+    
+    if (cocNearBlurred > 0.0f) {
+        return col / (_KernelSize * 2 + 1);
     } else {
-        return col;
+        return base;
     }
 }
 
-float4 PS_FarBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    int kernelSize = _KernelSize;
+    float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
+    float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
+    
+    float4 base = tex2D(QuarterPing, uv);
+    float4 col = base;
+
+    float theta = radians(_Theta2);
+    float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
+
+    [loop]
+    for (int x = -kernelSize; x <= kernelSize; ++x) {
+        if (x == 0) continue;
+        float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+        col += tex2D(QuarterPingLinear, uv + offset);
+    }
+
+    if (cocNearBlurred > 0.0f) {
+        return col / (_KernelSize * 2 + 1);
+    } else {
+        return base;
+    }
+}
+
+float4 PS_FarBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    int kernelSize = _KernelSize;
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
     
     float4 col = tex2D(QuarterFarColor, uv);
-    if (tex2D(QuarterCoC, uv).g > 0.0f) {
-        float weightsSum = tex2D(QuarterCoC, uv).y;
-        [unroll]
-        for (int i = 0; i < 48; ++i) {
-            float2 offset = kernelScale * offsets[i] * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float weightsSum = tex2D(QuarterCoC, uv).y;
 
-            col += tex2D(QuarterFarColorLinear, uv + offset);
-            weightsSum += tex2D(QuarterCoC, uv + offset).g;
-        }
+    float theta = radians(_Theta);
+    float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
 
+    [loop]
+    for (int x = -kernelSize; x <= kernelSize; ++x) {
+        if (x == 0) continue;
+        float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+
+        col += tex2D(QuarterFarColorLinear, uv + offset);
+        weightsSum += tex2D(QuarterCoC, uv + offset).g;
+    }
+
+    if (tex2D(QuarterCoC, uv).g > 0.1f) {
+        return col / max(1.0f, weightsSum);
+    } else {
+        return 0.0f;
+    }
+}
+
+float4 PS_FarBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    int kernelSize = _KernelSize;
+    float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
+    
+    float4 col = tex2D(QuarterPing, uv);
+    float weightsSum = tex2D(QuarterCoC, uv).y;
+    
+    float theta = radians(_Theta2);
+    float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
+
+    [loop]
+    for (int x = -kernelSize; x <= kernelSize; ++x) {
+        if (x == 0) continue;
+        float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+
+        col += tex2D(QuarterPingLinear, uv + offset);
+        weightsSum += tex2D(QuarterCoC, uv + offset).g;
+    }
+
+    if (tex2D(QuarterCoC, uv).g > 0.1f) {
         return col / max(1.0f, weightsSum);
     } else {
         return 0.0f;
@@ -283,13 +377,13 @@ float4 PS_FarBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 float4 PS_NearFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
     
-    float4 col = tex2D(NearBlur, uv);
+    float4 col = tex2D(NearBlurLinear, uv);
     if (cocNearBlurred > 0.0f && _Fill) {
         [unroll]
         for (int x = -1; x <= -1; ++x) {
             [unroll]
             for (int y = -1; y <= -1; ++y) {
-                col = max(col, tex2D(NearBlur, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
+                col = max(col, tex2D(NearBlurLinear, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
             }
         }
     }
@@ -300,13 +394,13 @@ float4 PS_NearFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
 float4 PS_FarFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float farCoC = tex2D(QuarterCoC, uv).g;
     
-    float4 col = tex2D(FarBlur, uv);
+    float4 col = tex2D(FarBlurLinear, uv);
     if (farCoC > 0.0f && _Fill) {
         [unroll]
         for (int x = -1; x <= -1; ++x) {
             [unroll]
             for (int y = -1; y <= -1; ++y) {
-                col = max(col, tex2D(FarBlur, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
+                col = max(col, tex2D(FarBlurLinear, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
             }
         }
     }
@@ -431,17 +525,31 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
     }
 
     pass {
+        RenderTarget = AFX_QuarterPing;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_NearBlurX;
+    }
+
+    pass {
         RenderTarget = AFX_NearBlur;
 
         VertexShader = PostProcessVS;
-        PixelShader = PS_NearBlur;
+        PixelShader = PS_NearBlurY;
+    }
+
+    pass {
+        RenderTarget = AFX_QuarterPing;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_FarBlurX;
     }
 
     pass {
         RenderTarget = AFX_FarBlur;
 
         VertexShader = PostProcessVS;
-        PixelShader = PS_FarBlur;
+        PixelShader = PS_FarBlurY;
     }
 
     pass {

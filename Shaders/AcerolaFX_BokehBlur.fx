@@ -15,6 +15,18 @@ uniform float _FocusRange <
     ui_tooltip = "Adjust range at which detail is sharp around the focal plane.";
 > = 20.0f;
 
+uniform int _KernelShape <
+    ui_type = "combo";
+    ui_label = "Aperture Shape";
+    ui_tooltip = "shape of the kernel.";
+    ui_items = "Circle\0"
+               "Square\0"
+               "Diamond\0"
+               "Hexagon\0"
+               "Octagon\0"
+               "Star\0";
+> = 0;
+
 uniform int _KernelSize <
     ui_category = "Kernel Settings";
     ui_category_closed = true;
@@ -24,41 +36,14 @@ uniform int _KernelSize <
     ui_tooltip = "Size of bokeh kernel";
 > = 6;
 
-uniform int _Theta <
+uniform int _KernelRotation <
     ui_category = "Kernel Settings";
     ui_category_closed = true;
     ui_min = -180; ui_max = 180;
-    ui_label = "Kernel Rotation";
+    ui_label = "Actual Kernel Rotation";
     ui_type = "slider";
-    ui_tooltip = "Rotation of kernel in first blur pass.";
+    ui_tooltip = "Rotation of kernel.";
 > = 0;
-
-uniform int _Theta2 <
-    ui_category = "Kernel Settings";
-    ui_category_closed = true;
-    ui_min = -180; ui_max = 180;
-    ui_label = "Kernel Rotation 2";
-    ui_type = "slider";
-    ui_tooltip = "Rotation of kernel in second blur pass.";
-> = 90;
-
-uniform int _Theta3 <
-    ui_category = "Kernel Settings";
-    ui_category_closed = true;
-    ui_min = -180; ui_max = 180;
-    ui_label = "Kernel Rotation 3";
-    ui_type = "slider";
-    ui_tooltip = "Rotation of kernel in third blur pass.";
-> = 0;
-
-uniform int _Theta4 <
-    ui_category = "Kernel Settings";
-    ui_category_closed = true;
-    ui_min = -180; ui_max = 180;
-    ui_label = "Kernel Rotation 4";
-    ui_type = "slider";
-    ui_tooltip = "Rotation of kernel in fourth blur pass.";
-> = 90;
 
 uniform bool _Intersect <
     ui_category = "Kernel Settings";
@@ -74,8 +59,13 @@ uniform bool _Fill <
     ui_tooltip = "Attempt to fill in undersampling of kernel.";
 > = true;
 
+uniform bool _PointFilter <
+    ui_label = "Point Filter";
+    ui_tooltip = "Point filter when sampling while blurring.";
+> = true;
+
 uniform float _Exposure <
-    ui_min = 0.0f; ui_max = 1.0f;
+    ui_min = 0.0f; ui_max = 3.0f;
     ui_label = "Exposure";
     ui_type = "drag";
     ui_tooltip = "Adjust exposure.";
@@ -312,6 +302,21 @@ float PS_BlurCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
     return coc / 13;
 }
 
+int GetShapeRotation(int n) {
+    if      (_KernelShape == 1) // Square
+        return float4(0, 90, 0, 90)[n];
+    else if (_KernelShape == 2) // Diamond
+        return float4(0, 45, 0, 45)[n];
+    else if (_KernelShape == 3) // Hexagon
+        return float4(0, 45, 0, -45)[n];
+    else if (_KernelShape == 4) // Octagon
+        return float4(0, 90, -45, 45)[n];
+    else if (_KernelShape == 5) // Star
+        return float4(0, 90, -45, 45)[n];
+
+    return 0;
+}
+
 float4 Near(float2 uv, int rotation, sampler2D source) {
     int kernelSize = _KernelSize;
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
@@ -320,7 +325,7 @@ float4 Near(float2 uv, int rotation, sampler2D source) {
     float4 base = tex2D(source, uv);
     float4 col = base;
 
-    float theta = radians(_Theta);
+    float theta = radians(rotation + _KernelRotation);
     float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
 
     [loop]
@@ -338,37 +343,43 @@ float4 Near(float2 uv, int rotation, sampler2D source) {
 }
 
 float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, _Theta, QuarterColorLinear);
+    return Near(uv, GetShapeRotation(0), QuarterColorLinear);
 }
 
 float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, _Theta, QuarterPingLinear);
+    return Near(uv, GetShapeRotation(1), QuarterPingLinear);
 }
 
 float4 PS_NearBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, _Theta3, QuarterColorLinear);
+    return Near(uv, GetShapeRotation(2), QuarterColorLinear);
 }
 
 float4 PS_NearBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, _Theta4, QuarterPingLinear);
+    return Near(uv, GetShapeRotation(3), QuarterPingLinear);
 }
 
-float4 Far(float2 uv, int rotation, sampler2D source) {
+float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
     int kernelSize = _KernelSize;
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
     
-    float4 col = tex2D(source, uv);
+    float4 col = tex2D(blurPoint, uv);
     float4 brightest = col;
     float weightsSum = tex2D(QuarterCoC, uv).y;
 
-    float theta = radians(rotation);
+    float theta = radians(rotation + _KernelRotation);
     float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
 
     [loop]
     for (int x = -kernelSize; x <= kernelSize; ++x) {
         if (x == 0) continue;
         float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-        float4 s = tex2D(source, uv + offset);
+        
+        float4 s = 0.0f;
+        if (_PointFilter)
+            s = tex2D(blurPoint, uv + offset);
+        else
+            s = tex2D(blurLinear, uv + offset);
+
         float weight = tex2D(QuarterCoCLinear, uv + offset).g;
 
         brightest = max(brightest, s);
@@ -384,19 +395,19 @@ float4 Far(float2 uv, int rotation, sampler2D source) {
 }
 
 float4 PS_FarBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Far(uv, _Theta, QuarterFarColorLinear);
+    return Far(uv, GetShapeRotation(0), QuarterFarColor, QuarterFarColorLinear);
 }
 
 float4 PS_FarBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Far(uv, _Theta2, QuarterPingLinear);
+    return Far(uv, GetShapeRotation(1), QuarterPing, QuarterPingLinear);
 }
 
 float4 PS_FarBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Far(uv, _Theta3, QuarterFarColorLinear);
+    return Far(uv, GetShapeRotation(2), QuarterFarColor, QuarterFarColorLinear);
 }
 
 float4 PS_FarBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Far(uv, _Theta4, QuarterPingLinear);
+    return Far(uv, GetShapeRotation(3), QuarterPing, QuarterPingLinear);
 }
 
 float4 PS_CompositeNearKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -408,7 +419,7 @@ float4 PS_CompositeNearKernel(float4 position : SV_POSITION, float2 uv : TEXCOOR
 float4 PS_CompositeFarKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 f1 = tex2D(FarBlur, uv);
     float4 f2 = tex2D(FarFill, uv);
-    return _Intersect ? min(f1, f2) : max(f1, f2);
+    return _KernelShape != 5 ? min(f1, f2) : max(f1, f2);
 }
 
 float4 PS_NearFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

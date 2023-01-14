@@ -97,6 +97,14 @@ texture2D AFX_FarFill { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Fo
 sampler2D FarFill { Texture = AFX_FarFill; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D FarFillLinear { Texture = AFX_FarFill; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
+texture2D AFX_NearBlend { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+sampler2D NearBlend { Texture = AFX_NearBlend; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+sampler2D NearBlendLinear { Texture = AFX_NearBlend; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
+
+texture2D AFX_FarBlend { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+sampler2D FarBlend { Texture = AFX_FarBlend; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+sampler2D FarBlendLinear { Texture = AFX_FarBlend; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
+
 texture2D AFX_QuarterCoC { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RG8; };
 sampler2D QuarterCoC { Texture = AFX_QuarterCoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D QuarterCoCLinear { Texture = AFX_QuarterCoC; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
@@ -290,12 +298,12 @@ float PS_BlurCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
     return coc / 13;
 }
 
-float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+float4 Near(float2 uv, int rotation, sampler2D source) {
     int kernelSize = _KernelSize;
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
     float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
     
-    float4 base = tex2D(QuarterColor, uv);
+    float4 base = tex2D(source, uv);
     float4 col = base;
 
     float theta = radians(_Theta);
@@ -305,7 +313,7 @@ float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     for (int x = -kernelSize; x <= kernelSize; ++x) {
         if (x == 0) continue;
         float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-        col += tex2D(QuarterColorLinear, uv + offset);
+        col += tex2D(source, uv + offset);
     }
     
     if (cocNearBlurred > 0.0f) {
@@ -315,29 +323,20 @@ float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     }
 }
 
+float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    return Near(uv, _Theta, QuarterColorLinear);
+}
+
 float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    int kernelSize = _KernelSize;
-    float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
-    float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
-    
-    float4 base = tex2D(QuarterPing, uv);
-    float4 col = base;
+    return Near(uv, _Theta, QuarterPingLinear);
+}
 
-    float theta = radians(_Theta2);
-    float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
+float4 PS_NearBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    return Near(uv, _Theta3, QuarterColorLinear);
+}
 
-    [loop]
-    for (int x = -kernelSize; x <= kernelSize; ++x) {
-        if (x == 0) continue;
-        float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-        col += tex2D(QuarterPingLinear, uv + offset);
-    }
-
-    if (cocNearBlurred > 0.0f) {
-        return col / (_KernelSize * 2 + 1);
-    } else {
-        return base;
-    }
+float4 PS_NearBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    return Near(uv, _Theta4, QuarterPingLinear);
 }
 
 float4 Far(float2 uv, int rotation, sampler2D source) {
@@ -374,16 +373,36 @@ float4 PS_FarBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
     return Far(uv, _Theta2, QuarterPingLinear);
 }
 
+float4 PS_FarBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    return Far(uv, _Theta3, QuarterFarColorLinear);
+}
+
+float4 PS_FarBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    return Far(uv, _Theta4, QuarterPingLinear);
+}
+
+float4 PS_CompositeNearKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float4 n1 = tex2D(NearBlur, uv);
+    float4 n2 = tex2D(NearFill, uv);
+    return min(n1, n2);
+}
+
+float4 PS_CompositeFarKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float4 f1 = tex2D(FarBlur, uv);
+    float4 f2 = tex2D(FarFill, uv);
+    return min(f1, f2);
+}
+
 float4 PS_NearFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
     
-    float4 col = tex2D(NearBlurLinear, uv);
+    float4 col = tex2D(NearBlendLinear, uv);
     if (cocNearBlurred > 0.0f && _Fill) {
         [unroll]
         for (int x = -1; x <= -1; ++x) {
             [unroll]
             for (int y = -1; y <= -1; ++y) {
-                col = max(col, tex2D(NearBlurLinear, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
+                col = max(col, tex2D(NearBlendLinear, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
             }
         }
     }
@@ -394,13 +413,13 @@ float4 PS_NearFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
 float4 PS_FarFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float farCoC = tex2D(QuarterCoC, uv).g;
     
-    float4 col = tex2D(FarBlurLinear, uv);
+    float4 col = tex2D(FarBlendLinear, uv);
     if (farCoC > 0.0f && _Fill) {
         [unroll]
         for (int x = -1; x <= -1; ++x) {
             [unroll]
             for (int y = -1; y <= -1; ++y) {
-                col = max(col, tex2D(FarBlurLinear, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
+                col = max(col, tex2D(FarBlendLinear, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
             }
         }
     }
@@ -550,6 +569,48 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
 
         VertexShader = PostProcessVS;
         PixelShader = PS_FarBlurY;
+    }
+
+    pass {
+        RenderTarget = AFX_QuarterPing;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_NearBlurX2;
+    }
+
+    pass {
+        RenderTarget = AFX_NearFill;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_NearBlurY2;
+    }
+
+    pass {
+        RenderTarget = AFX_QuarterPing;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_FarBlurX2;
+    }
+
+    pass {
+        RenderTarget = AFX_FarFill;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_FarBlurY2;
+    }
+
+    pass {
+        RenderTarget = AFX_NearBlend;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_CompositeNearKernel;
+    }
+
+    pass {
+        RenderTarget = AFX_FarBlend;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_CompositeFarKernel;
     }
 
     pass {

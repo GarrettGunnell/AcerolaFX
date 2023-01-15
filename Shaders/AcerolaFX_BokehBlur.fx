@@ -47,6 +47,13 @@ uniform float _Strength <
     ui_tooltip = "Adjust distance between kernel samples as a multiplier on the kernel size.";
 > = 1.0f;
 
+uniform bool _NearPointFilter <
+    ui_category = "Near Field Settings";
+    ui_category_closed = true;
+    ui_label = "Point Filter";
+    ui_tooltip = "Point filter when sampling while blurring.";
+> = false;
+
 uniform int _NearKernelSize <
     ui_category = "Near Field Settings";
     ui_category_closed = true;
@@ -55,7 +62,6 @@ uniform int _NearKernelSize <
     ui_type = "slider";
     ui_tooltip = "Size of near bokeh kernel";
 > = 6;
-
 
 uniform int _NearFillWidth <
     ui_category = "Near Field Settings";
@@ -75,13 +81,12 @@ uniform float _NearExposure <
     ui_tooltip = "Radius of max filter to try and mitigate undersampling.";
 > = 0.0f;
 
-uniform bool _NearPointFilter <
-    ui_category = "Near Field Settings";
+uniform bool _FarPointFilter <
+    ui_category = "Far Field Settings";
     ui_category_closed = true;
     ui_label = "Point Filter";
     ui_tooltip = "Point filter when sampling while blurring.";
 > = false;
-
 
 uniform int _FarKernelSize <
     ui_category = "Far Field Settings";
@@ -110,19 +115,8 @@ uniform float _FarExposure <
     ui_tooltip = "Radius of max filter to try and mitigate undersampling.";
 > = 0.0f;
 
-uniform bool _FarPointFilter <
-    ui_category = "Far Field Settings";
-    ui_category_closed = true;
-    ui_label = "Point Filter";
-    ui_tooltip = "Point filter when sampling while blurring.";
-> = false;
-
 texture2D AFX_CoC { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG8; };
 sampler2D CoC { Texture = AFX_CoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
-
-texture2D AFX_QuarterColor { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
-sampler2D QuarterColor { Texture = AFX_QuarterColor; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
-sampler2D QuarterColorLinear { Texture = AFX_QuarterColor; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
 texture2D AFX_NearBlur { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 sampler2D NearBlur { Texture = AFX_NearBlur; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
@@ -149,10 +143,12 @@ sampler2D FarBlend { Texture = AFX_FarBlend; MagFilter = POINT; MinFilter = POIN
 sampler2D FarBlendLinear { Texture = AFX_FarBlend; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
 texture2D AFX_QuarterCoC { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RG8; };
+storage2D s_QuarterCoC { Texture = AFX_QuarterCoC; };
 sampler2D QuarterCoC { Texture = AFX_QuarterCoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D QuarterCoCLinear { Texture = AFX_QuarterCoC; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
 texture2D AFX_QuarterFarColor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
+storage2D s_QuarterFarColor { Texture = AFX_QuarterFarColor; };
 sampler2D QuarterFarColor { Texture = AFX_QuarterFarColor; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D QuarterFarColorLinear { Texture = AFX_QuarterFarColor; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
@@ -254,49 +250,45 @@ float4 PS_CoC(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     return saturate(float4(nearCOC, farCOC, 0.0f, 1.0f));
 }
 
-float4 PS_DownscaleColor(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return float4(tex2D(Common::AcerolaBufferLinear, uv).rgb, 1.0f);
-}
-
-float4 PS_DownscaleCoC(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return tex2D(CoC, uv + float2(-0.25f, -0.25f) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT));
-}
-
-float4 PS_DownscaleFarColor(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+void CS_Downscale(uint3 tid : SV_DISPATCHTHREADID) {
     float2 pixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float2 uv = tid.xy * pixelSize;
+    float2 halfUV = tid.xy * pixelSize * 2;
 
-    float2 coc = tex2D(CoC, uv + float2(-0.25f, -0.25f) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).rg;
+    float2 coc = tex2Dlod(CoC , float4(uv + float2(-0.25f, -0.25f) * pixelSize, 0, 0)).rg;
+    
+    tex2Dstore(s_QuarterCoC, tid.xy * 0.5, float4(coc, 0.0f, 0.0f));
 
     float2 texCoord00 = uv + float2(-0.25f, -0.25f) * pixelSize;
 	float2 texCoord10 = uv + float2( 0.25f, -0.25f) * pixelSize;
 	float2 texCoord01 = uv + float2(-0.25f,  0.25f) * pixelSize;
 	float2 texCoord11 = uv + float2( 0.25f,  0.25f) * pixelSize;
 
-    float cocFar00 = tex2D(CoC, texCoord00).g;
-    float cocFar10 = tex2D(CoC, texCoord10).g;
-    float cocFar01 = tex2D(CoC, texCoord01).g;
-    float cocFar11 = tex2D(CoC, texCoord11).g;
+    float cocFar00 = tex2Dlod(CoC, float4(texCoord00, 0.0f, 0.0f)).g;
+    float cocFar10 = tex2Dlod(CoC, float4(texCoord10, 0.0f, 0.0f)).g;
+    float cocFar01 = tex2Dlod(CoC, float4(texCoord01, 0.0f, 0.0f)).g;
+    float cocFar11 = tex2Dlod(CoC, float4(texCoord11, 0.0f, 0.0f)).g;
 
     float weight00 = 1000.0f;
-	float4 colorMulCOCFar = weight00 * tex2D(Common::AcerolaBuffer, texCoord00);
+	float4 colorMulCOCFar = weight00 * tex2Dlod(Common::AcerolaBuffer, float4(texCoord00, 0.0f, 0.0f));
 	float weightsSum = weight00;
 	
 	float weight10 = 1.0f / (abs(cocFar00 - cocFar10) + 0.001f);
-	colorMulCOCFar += weight10 * tex2D(Common::AcerolaBuffer, texCoord10);
+	colorMulCOCFar += weight10 * tex2Dlod(Common::AcerolaBuffer, float4(texCoord10, 0.0f, 0.0f));
 	weightsSum += weight10;
 	
 	float weight01 = 1.0f / (abs(cocFar00 - cocFar01) + 0.001f);
-	colorMulCOCFar += weight01 * tex2D(Common::AcerolaBuffer, texCoord01);
+	colorMulCOCFar += weight01 * tex2Dlod(Common::AcerolaBuffer, float4(texCoord01, 0.0f, 0.0f));
 	weightsSum += weight01;
 	
 	float weight11 = 1.0f / (abs(cocFar00 - cocFar11) + 0.001f);
-	colorMulCOCFar += weight11 * tex2D(Common::AcerolaBuffer, texCoord11);
+	colorMulCOCFar += weight11 * tex2Dlod(Common::AcerolaBuffer, float4(texCoord11, 0.0f, 0.0f));
 	weightsSum += weight11;
 
 	colorMulCOCFar /= weightsSum;
 	colorMulCOCFar *= coc.g;
 
-    return float4(colorMulCOCFar.rgb, 1.0f);
+    tex2Dstore(s_QuarterFarColor, tid.xy, float4(colorMulCOCFar.rgb, 1.0f));
 }
 
 float2 PS_MaxCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -395,7 +387,7 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
 }
 
 float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, GetShapeRotation(0), QuarterColor, QuarterColorLinear);
+    return Near(uv, GetShapeRotation(0), Common::AcerolaBuffer, Common::AcerolaBufferLinear);
 }
 
 float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -403,7 +395,7 @@ float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 }
 
 float4 PS_NearBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, GetShapeRotation(2), QuarterColor, QuarterColorLinear);
+    return Near(uv, GetShapeRotation(2), Common::AcerolaBuffer, Common::AcerolaBufferLinear);
 }
 
 float4 PS_NearBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -586,24 +578,9 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
     }
 
     pass {
-        RenderTarget = AFX_QuarterColor;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_DownscaleColor;
-    }
-
-    pass {
-        RenderTarget = AFX_QuarterCoC;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_DownscaleCoC;
-    }
-
-    pass {
-        RenderTarget = AFX_QuarterFarColor;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_DownscaleFarColor;
+        ComputeShader = CS_Downscale<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
 
     pass {

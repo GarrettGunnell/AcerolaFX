@@ -313,9 +313,9 @@ float PS_BlurCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 int GetShapeRotation(int n) {
     if      (_KernelShape == 1) // Square
-        return float4(0, 90, 0, 90)[n];
+        return float4(0, 90, 0, 0)[n];
     else if (_KernelShape == 2) // Diamond
-        return float4(0, 45, 0, 45)[n];
+        return float4(0, 45, 0, 0)[n];
     else if (_KernelShape == 3) // Hexagon
         return float4(0, 45, 0, -45)[n];
     else if (_KernelShape == 4) // Octagon
@@ -359,7 +359,7 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
 
         float sCoC = tex2D(CoCLinear, uv + offset).r;
         float sDepth = ReShade::GetLinearizedDepth(uv + offset);
-        
+
         bool discardSample = sCoC < baseCoC && sDepth < baseDepth && _PreventSpillage;
         if (!discardSample) {
             col += s;
@@ -384,11 +384,17 @@ float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 }
 
 float4 PS_NearBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, GetShapeRotation(2), Common::AcerolaBuffer, Common::AcerolaBufferLinear);
+    if (_KernelShape == 3 || _KernelShape == 4 || _KernelShape == 5)
+        return Near(uv, GetShapeRotation(2), Common::AcerolaBuffer, Common::AcerolaBufferLinear);
+    else
+        return 0.0f;
 }
 
 float4 PS_NearBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, GetShapeRotation(3), FullPing, FullPingLinear);
+    if (_KernelShape == 3 || _KernelShape == 4 || _KernelShape == 5)
+        return Near(uv, GetShapeRotation(3), FullPing, FullPingLinear);
+    else
+        return 0.0f;
 }
 
 float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
@@ -446,27 +452,43 @@ float4 PS_FarBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
 }
 
 float4 PS_FarBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Far(uv, GetShapeRotation(2), FarColor, FarColorLinear);
+    if (_KernelShape == 3 || _KernelShape == 4 || _KernelShape == 5)
+        return Far(uv, GetShapeRotation(2), FarColor, FarColorLinear);
+    else
+        return 0.0f;
 }
 
 float4 PS_FarBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Far(uv, GetShapeRotation(3), FullPing, FullPingLinear);
+    if (_KernelShape == 3 || _KernelShape == 4 || _KernelShape == 5)
+        return Far(uv, GetShapeRotation(3), FullPing, FullPingLinear);
+    else
+        return 0.0f;
 }
 
 float4 PS_BlendNearKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 n1 = tex2D(AFXTemp1::RenderTexLinear, uv);
-    float4 n2 = tex2D(AFXTemp3::RenderTexLinear, uv);
-    return _KernelShape != 5 ? min(n1, n2) : max(n1, n2);
+    
+    if (_KernelShape == 3 || _KernelShape == 4 || _KernelShape == 5) {
+        float4 n2 = tex2D(AFXTemp3::RenderTexLinear, uv);
+        return _KernelShape != 5 ? min(n1, n2) : max(n1, n2);
+    }
+    else
+        return n1;
 }
 
 float4 PS_BlendFarKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 f1 = tex2D(AFXTemp2::RenderTexLinear, uv);
-    float4 f2 = tex2D(AFXTemp4::RenderTexLinear, uv);
-    return _KernelShape != 5 ? min(f1, f2) : max(f1, f2);
+    
+    if (_KernelShape == 3 || _KernelShape == 4 || _KernelShape == 5) {
+        float4 f2 = tex2D(AFXTemp4::RenderTexLinear, uv);
+        return _KernelShape != 5 ? min(f1, f2) : max(f1, f2);
+    }
+    else
+        return f1;
 }
 
 void CS_Fill(uint3 tid : SV_DISPATCHTHREADID) {
-    float cocNearBlurred = tex2Dfetch(NearCoCBlur, tid.xy * 0.5f).r;
+    float cocNearBlurred = tex2Dfetch(NearCoCBlur, tid.xy).r;
     
     float4 col = tex2Dfetch(AFXTemp1::RenderTexLinear, tid.xy);
     float4 base = col;

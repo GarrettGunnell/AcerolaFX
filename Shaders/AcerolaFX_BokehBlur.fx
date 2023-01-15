@@ -118,6 +118,24 @@ uniform float _FarExposure <
     ui_tooltip = "Radius of max filter to try and mitigate undersampling.";
 > = 0.0f;
 
+uniform int _CoCFill <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_min = 0; ui_max = 10;
+    ui_label = "Near CoC Fill";
+    ui_type = "slider";
+    ui_tooltip = "Border size of near plane circle of confusion.";
+> = 3;
+
+uniform int _CoCBlur <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_min = 0; ui_max = 10;
+    ui_label = "Near CoC Blur";
+    ui_type = "slider";
+    ui_tooltip = "Blur strength of near plane circle of confusion.";
+> = 3;
+
 texture2D AFX_CoC { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG8; };
 sampler2D CoC { Texture = AFX_CoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D CoCLinear { Texture = AFX_CoC; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
@@ -241,7 +259,8 @@ void CS_CreateFarColor(uint3 tid : SV_DISPATCHTHREADID) {
 float2 PS_MaxCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float cocMax = tex2D(CoC, uv).r;
     
-    for (int x = -3; x <= 3; ++x) {
+    [loop]
+    for (int x = -_CoCFill; x <= _CoCFill; ++x) {
         if (x == 0) continue;
         cocMax = max(cocMax, tex2D(CoC, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r);
     }
@@ -252,7 +271,8 @@ float2 PS_MaxCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 float PS_MaxCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float cocMax = tex2D(FullPing, uv).r;
     
-    for (int y = -3; y <= 3; ++y) {
+    [loop]
+    for (int y = -_CoCFill; y <= _CoCFill; ++y) {
         if (y == 0) continue;
         cocMax = max(cocMax, tex2D(FullPing, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r);
     }
@@ -263,7 +283,8 @@ float PS_MaxCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
 float2 PS_BlurCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float coc = tex2D(NearCoCBlur, uv).r;
     
-    for (int x = -3; x <= 3; ++x) {
+    [loop]
+    for (int x = -_CoCBlur; x <= _CoCBlur; ++x) {
         if (x == 0) continue;
         coc += tex2D(NearCoCBlur, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
     }
@@ -274,7 +295,8 @@ float2 PS_BlurCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
 float PS_BlurCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float coc = tex2D(FullPing, uv).r;
     
-    for (int y = -3; y <= 3; ++y) {
+    [loop]
+    for (int y = -_CoCBlur; y <= _CoCBlur; ++y) {
         if (y == 0) continue;
         coc += tex2D(FullPing, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
     }

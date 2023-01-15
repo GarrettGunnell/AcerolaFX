@@ -124,27 +124,27 @@ texture2D AFX_QuarterColor { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 
 sampler2D QuarterColor { Texture = AFX_QuarterColor; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D QuarterColorLinear { Texture = AFX_QuarterColor; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
-texture2D AFX_NearBlur { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+texture2D AFX_NearBlur { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 sampler2D NearBlur { Texture = AFX_NearBlur; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D NearBlurLinear { Texture = AFX_NearBlur; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
-texture2D AFX_FarBlur { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+texture2D AFX_FarBlur { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 sampler2D FarBlur { Texture = AFX_FarBlur; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D FarBlurLinear { Texture = AFX_FarBlur; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
-texture2D AFX_NearFill { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+texture2D AFX_NearFill { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 sampler2D NearFill { Texture = AFX_NearFill; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D NearFillLinear { Texture = AFX_NearFill; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
-texture2D AFX_FarFill { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+texture2D AFX_FarFill { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 sampler2D FarFill { Texture = AFX_FarFill; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D FarFillLinear { Texture = AFX_FarFill; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
-texture2D AFX_NearBlend { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+texture2D AFX_NearBlend { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 sampler2D NearBlend { Texture = AFX_NearBlend; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D NearBlendLinear { Texture = AFX_NearBlend; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
-texture2D AFX_FarBlend { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+texture2D AFX_FarBlend { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 sampler2D FarBlend { Texture = AFX_FarBlend; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D FarBlendLinear { Texture = AFX_FarBlend; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
@@ -152,7 +152,7 @@ texture2D AFX_QuarterCoC { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2;
 sampler2D QuarterCoC { Texture = AFX_QuarterCoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D QuarterCoCLinear { Texture = AFX_QuarterCoC; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
-texture2D AFX_QuarterFarColor { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = RGBA16; };
+texture2D AFX_QuarterFarColor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 sampler2D QuarterFarColor { Texture = AFX_QuarterFarColor; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D QuarterFarColorLinear { Texture = AFX_QuarterFarColor; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
@@ -399,7 +399,7 @@ float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 }
 
 float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, GetShapeRotation(1), QuarterPing, QuarterPingLinear);
+    return Near(uv, GetShapeRotation(1), AFXTemp1::RenderTex, AFXTemp1::RenderTexLinear);
 }
 
 float4 PS_NearBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -407,7 +407,7 @@ float4 PS_NearBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
 }
 
 float4 PS_NearBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, GetShapeRotation(3), QuarterPing, QuarterPingLinear);
+    return Near(uv, GetShapeRotation(3), AFXTemp1::RenderTex, AFXTemp1::RenderTexLinear);
 }
 
 float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
@@ -455,7 +455,7 @@ float4 PS_FarBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
 }
 
 float4 PS_FarBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Far(uv, GetShapeRotation(1), QuarterPing, QuarterPingLinear);
+    return Far(uv, GetShapeRotation(1), AFXTemp1::RenderTex, AFXTemp1::RenderTexLinear);
 }
 
 float4 PS_FarBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -463,7 +463,7 @@ float4 PS_FarBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 }
 
 float4 PS_FarBlurY2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Far(uv, GetShapeRotation(3), QuarterPing, QuarterPingLinear);
+    return Far(uv, GetShapeRotation(3), AFXTemp1::RenderTex, AFXTemp1::RenderTexLinear);
 }
 
 float4 PS_CompositeNearKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -635,7 +635,7 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
     }
 
     pass {
-        RenderTarget = AFX_QuarterPing;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_NearBlurX;
@@ -649,7 +649,7 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
     }
 
     pass {
-        RenderTarget = AFX_QuarterPing;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_FarBlurX;
@@ -663,7 +663,7 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
     }
 
     pass {
-        RenderTarget = AFX_QuarterPing;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_NearBlurX2;
@@ -677,7 +677,7 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
     }
 
     pass {
-        RenderTarget = AFX_QuarterPing;
+        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_FarBlurX2;

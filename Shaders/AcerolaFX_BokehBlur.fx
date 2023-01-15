@@ -18,6 +18,32 @@ uniform float _FocusRange <
     ui_tooltip = "Adjust range at which detail is sharp around the focal plane.";
 > = 20.0f;
 
+uniform int _InverseTonemapper <
+    ui_category = "Tonemap Settings";
+    ui_category_closed = true;
+    ui_type = "combo";
+    ui_label = "Inverse Tonemap";
+    ui_tooltip = "Convert ldr to sdr.";
+    ui_items = "No Tonemapper\0"
+               "Extended Reinhard\0";
+> = 0;
+
+uniform bool _ReverseTonemap <
+    ui_category = "Tonemap Settings";
+    ui_category_closed = true;
+    ui_label = "Reverse Tonemap";
+    ui_tooltip = "Tonemap hdr bokeh blur back to sdr using the above tonemapping function. Disable if you want to tonemap in the Tonemap effect instead.";
+> = true;
+
+uniform float _Exposure <
+    ui_category = "Tonemap Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Exposure";
+    ui_type = "drag";
+    ui_tooltip = "Adjust exposure of the far and near fields.";
+> = 1.0f;
+
 uniform int _KernelShape <
     ui_category = "Bokeh Settings";
     ui_category_closed = true;
@@ -165,6 +191,30 @@ sampler2D Bokeh { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilt
 storage2D s_Bokeh { Texture = AFXTemp1::AFX_RenderTex1; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Bokeh, uv).rgba; }
 
+float3 InverseTonemap(float3 col) {
+    float3 x = col * _Exposure;
+
+    if (_InverseTonemapper == 0) { // No Tonemap
+        return x;
+    } else if (_InverseTonemapper == 1) { // Extended Reinhard
+        return col / (_Exposure * max(1.0 - col / _Exposure, 0.001));
+    }
+
+    else return 0.0f;
+}
+
+float3 Tonemap(float3 x) {
+    if (!_ReverseTonemap) return x;
+
+    if (_InverseTonemapper == 0) { // No Tonemap
+        return x;
+    } else if (_InverseTonemapper == 1) { // Extended Reinhard
+        return x * (_Exposure / (1.0 + x / _Exposure));
+    }
+
+    else return 0.0f;
+}
+
 // Circular Kernel from GPU Zen 'Practical Gather-based Bokeh Depth of Field' by Wojciech Sterna
 static const float2 offsets[] =
 {
@@ -257,10 +307,10 @@ void CS_CreateFarColor(uint3 tid : SV_DISPATCHTHREADID) {
     float2 uv = tid.xy * pixelSize;
 
     float2 coc = tex2Dlod(CoC , float4(uv, 0, 0)).rg;
-	float4 colorMulCOCFar = tex2Dlod(Common::AcerolaBufferLinear, float4(uv, 0, 0));
-	colorMulCOCFar *= coc.g;
+    float4 col = tex2Dlod(Common::AcerolaBufferLinear, float4(uv, 0, 0));
+	float4 colorMulCOCFar = col * coc.g;
 
-    tex2Dstore(s_FarColor, tid.xy, float4(colorMulCOCFar.rgb, 1.0f));
+    tex2Dstore(s_FarColor, tid.xy, float4((colorMulCOCFar.rgb), 1.0f));
 }
 
 float2 PS_MaxCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -356,7 +406,8 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
             s = tex2D(blurPoint, uv + offset);
         else
             s = tex2D(blurLinear, uv + offset);
-
+        s.rgb = InverseTonemap(s.rgb);
+        
         float sCoC = tex2D(CoCLinear, uv + offset).r;
         float sDepth = ReShade::GetLinearizedDepth(uv + offset);
 
@@ -425,6 +476,7 @@ float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
             s = tex2D(blurPoint, uv + offset);
         else
             s = tex2D(blurLinear, uv + offset);
+        s.rgb = InverseTonemap(s.rgb);
 
         float weight = tex2D(CoCLinear, uv + offset).g;
         float sDepth = ReShade::GetLinearizedDepth(uv + offset);
@@ -573,12 +625,12 @@ float4 PS_Composite(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 
     dofFar /= weightsSum;
 
-    result = lerp(result, dofFar, blend * cocFar);
+    result.rgb = lerp(result.rgb, Tonemap(dofFar.rgb), blend * cocFar);
 
     float cocNear = tex2D(NearCoCBlurLinear, uv).r;
     float4 dofNear = tex2D(AFXTemp2::RenderTexLinear, uv);
 
-    result = lerp(result, dofNear, blend * cocNear);
+    result.rgb = lerp(result.rgb, Tonemap(dofNear.rgb), blend * cocNear);
 
     return result;
 }

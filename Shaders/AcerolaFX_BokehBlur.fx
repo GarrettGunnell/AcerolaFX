@@ -289,7 +289,7 @@ float2 PS_BlurCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
         coc += tex2D(NearCoCBlur, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
     }
 
-    return coc / 7;
+    return coc / (_CoCBlur * 2 + 1);
 }
 
 float PS_BlurCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -301,7 +301,7 @@ float PS_BlurCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
         coc += tex2D(FullPing, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r;
     }
     
-    return coc / 7;
+    return coc / (_CoCBlur * 2 + 1);
 }
 
 int GetShapeRotation(int n) {

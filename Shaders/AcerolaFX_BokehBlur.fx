@@ -276,6 +276,28 @@ void CS_Downscale(uint3 tid : SV_DISPATCHTHREADID) {
     tex2Dstore(s_QuarterFarColor, tid.xy, float4(colorMulCOCFar.rgb, 1.0f));
 }
 
+float4 PS_MinQuarterFarColorX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float4 colMin = tex2D(QuarterFarColor, uv);
+    
+    for (int x = -1; x <= 1; ++x) {
+        if (x == 0) continue;
+        colMin = min(colMin, tex2D(QuarterFarColor, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
+    }
+
+    return float4(colMin.rgb, 1.0f);
+}
+
+float4 PS_MinQuarterFarColorY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float4 colMin = tex2D(FullPing, uv);
+    
+    for (int y = -1; y <= 1; ++y) {
+        if (y == 0) continue;
+        colMin = min(colMin, tex2D(FullPing, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
+    }
+
+    return float4(colMin.rgb, 1.0f);
+}
+
 float2 PS_MaxCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float cocMax = tex2D(QuarterCoC, uv).r;
     
@@ -283,6 +305,7 @@ float2 PS_MaxCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
         if (x == 0) continue;
         cocMax = max(cocMax, tex2D(QuarterCoC, uv + float2(x, 0) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r);
     }
+
     return cocMax;
 }
 
@@ -293,6 +316,7 @@ float PS_MaxCoCY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
         if (y == 0) continue;
         cocMax = max(cocMax, tex2D(QuarterPing, uv + float2(0, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)).r);
     }
+
     return cocMax;
 }
 
@@ -413,14 +437,14 @@ float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
         else
             s = tex2D(blurLinear, uv + offset);
 
-        float weight = tex2D(QuarterCoCLinear, uv + offset).g;
+        float weight = tex2D(CoC, uv + offset).g;
 
-        brightest = max(brightest, s);
+        brightest = max(brightest, s * weight);
         col += s * weight;
         weightsSum += weight;
     }
 
-    if (tex2D(QuarterCoC, uv).g > 0.0f) {
+    if (tex2D(CoC, uv).g > 0.0f) {
         return lerp(col / max(0.01f, weightsSum), brightest, _FarExposure);
     } else {
         return 0.0f;
@@ -565,6 +589,20 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
         ComputeShader = CS_Downscale<8, 8>;
         DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
         DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
+    }
+
+    pass {
+        RenderTarget = AFX_FullPing;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_MinQuarterFarColorX;
+    }
+
+    pass {
+        RenderTarget = AFX_QuarterFarColor;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_MinQuarterFarColorY;
     }
 
     pass {

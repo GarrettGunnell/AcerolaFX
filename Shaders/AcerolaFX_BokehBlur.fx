@@ -16,6 +16,8 @@ uniform float _FocusRange <
 > = 20.0f;
 
 uniform int _KernelShape <
+    ui_category = "Bokeh Settings";
+    ui_category_closed = true;
     ui_type = "combo";
     ui_label = "Aperture Shape";
     ui_tooltip = "shape of the kernel.";
@@ -27,8 +29,26 @@ uniform int _KernelShape <
                "Star\0";
 > = 0;
 
+uniform int _KernelRotation <
+    ui_category = "Bokeh Settings";
+    ui_category_closed = true;
+    ui_min = -180; ui_max = 180;
+    ui_label = "Rotation";
+    ui_type = "slider";
+    ui_tooltip = "Rotation of bokeh shape.";
+> = 0;
+
+uniform float _Strength <
+    ui_category = "Bokeh Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 3.0f;
+    ui_label = "Sample Distance";
+    ui_type = "drag";
+    ui_tooltip = "Adjust distance between kernel samples as a multiplier on the kernel size.";
+> = 1.0f;
+
 uniform int _NearKernelSize <
-    ui_category = "Kernel Settings";
+    ui_category = "Near Field Settings";
     ui_category_closed = true;
     ui_min = 1; ui_max = 13;
     ui_label = "Near Kernel Size";
@@ -36,67 +56,66 @@ uniform int _NearKernelSize <
     ui_tooltip = "Size of near bokeh kernel";
 > = 6;
 
-uniform int _FarKernelSize <
-    ui_category = "Kernel Settings";
-    ui_category_closed = true;
-    ui_min = 1; ui_max = 13;
-    ui_label = "Far Kernel Size";
-    ui_type = "slider";
-    ui_tooltip = "Size of far bokeh kernel";
-> = 6;
-
-uniform int _KernelRotation <
-    ui_category = "Kernel Settings";
-    ui_category_closed = true;
-    ui_min = -180; ui_max = 180;
-    ui_label = "Kernel Rotation";
-    ui_type = "slider";
-    ui_tooltip = "Rotation of kernel.";
-> = 0;
-
-uniform bool _Fill <
-    ui_category = "Fill Settings";
-    ui_category_closed = true;
-    ui_label = "Fill";
-    ui_tooltip = "Attempt to fill in undersampling of kernel.";
-> = true;
 
 uniform int _NearFillWidth <
-    ui_category = "Fill Settings";
+    ui_category = "Near Field Settings";
     ui_category_closed = true;
-    ui_min = 1; ui_max = 5;
+    ui_min = 0; ui_max = 5;
     ui_label = "Near Fill Size";
     ui_type = "slider";
     ui_tooltip = "Radius of max filter to try and mitigate undersampling.";
 > = 1;
 
-uniform int _FarFillWidth <
-    ui_category = "Fill Settings";
+uniform float _NearExposure <
+    ui_category = "Near Field Settings";
     ui_category_closed = true;
-    ui_min = 1; ui_max = 5;
-    ui_label = "Far Fill Size";
+    ui_min = 0.0f; ui_max = 3.0f;
+    ui_label = "Exposure";
+    ui_type = "slider";
+    ui_tooltip = "Radius of max filter to try and mitigate undersampling.";
+> = 0.0f;
+
+uniform bool _NearPointFilter <
+    ui_category = "Near Field Settings";
+    ui_category_closed = true;
+    ui_label = "Point Filter";
+    ui_tooltip = "Point filter when sampling while blurring.";
+> = false;
+
+
+uniform int _FarKernelSize <
+    ui_category = "Far Field Settings";
+    ui_category_closed = true;
+    ui_min = 1; ui_max = 13;
+    ui_label = "Kernel Size";
+    ui_type = "slider";
+    ui_tooltip = "Size of far bokeh kernel";
+> = 6;
+
+uniform int _FarFillWidth <
+    ui_category = "Far Field Settings";
+    ui_category_closed = true;
+    ui_min = 0; ui_max = 5;
+    ui_label = "Fill Size";
     ui_type = "slider";
     ui_tooltip = "Radius of max filter to try and mitigate undersampling.";
 > = 1;
 
-uniform bool _PointFilter <
-    ui_label = "Point Filter";
-    ui_tooltip = "Point filter when sampling while blurring.";
-> = true;
-
-uniform float _Exposure <
+uniform float _FarExposure <
+    ui_category = "Far Field Settings";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 3.0f;
     ui_label = "Exposure";
-    ui_type = "drag";
-    ui_tooltip = "Adjust exposure.";
+    ui_type = "slider";
+    ui_tooltip = "Radius of max filter to try and mitigate undersampling.";
 > = 0.0f;
 
-uniform float _Strength <
-    ui_min = 0.0f; ui_max = 3.0f;
-    ui_label = "Strength";
-    ui_type = "drag";
-    ui_tooltip = "Adjust strength of the depth of field.";
-> = 1.0f;
+uniform bool _FarPointFilter <
+    ui_category = "Far Field Settings";
+    ui_category_closed = true;
+    ui_label = "Point Filter";
+    ui_tooltip = "Point filter when sampling while blurring.";
+> = false;
 
 texture2D AFX_CoC { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG8; };
 sampler2D CoC { Texture = AFX_CoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
@@ -349,13 +368,17 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
     float theta = radians(rotation + _KernelRotation);
     float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
 
+    int kernelMin = _KernelShape == 0 ? 0 : -kernelSize;
+    int kernelMax = _KernelShape == 0 ? 48 : kernelSize;
+
     [loop]
-    for (int x = -kernelSize; x <= kernelSize; ++x) {
-        if (x == 0) continue;
-        float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    for (int x = kernelMin; x <= kernelMax; ++x) {
+        if (x == 0 && _KernelShape != 0) continue;
+        float2 offset = _KernelShape == 0 ? offsets[x] : mul(R, float2(x, 0));
+        offset *= kernelScale * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
         float4 s = 0.0f;
 
-        if (_PointFilter)
+        if (_NearPointFilter)
             s = tex2D(blurPoint, uv + offset);
         else
             s = tex2D(blurLinear, uv + offset);
@@ -365,7 +388,7 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
     }
     
     if (cocNearBlurred > 0.0f) {
-        return lerp(col / (kernelSize * 2 + 1), brightest, _Exposure);
+        return lerp(col / (_KernelShape == 0 ? 49 : (kernelSize * 2 + 1)), brightest, _NearExposure);
     } else {
         return base;
     }
@@ -398,13 +421,17 @@ float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
     float theta = radians(rotation + _KernelRotation);
     float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
 
+    int kernelMin = _KernelShape == 0 ? 0 : -kernelSize;
+    int kernelMax = _KernelShape == 0 ? 48 : kernelSize;
+
     [loop]
-    for (int x = -kernelSize; x <= kernelSize; ++x) {
-        if (x == 0) continue;
-        float2 offset = kernelScale * mul(R, float2(x, 0)) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-        
+    for (int x = kernelMin; x <= kernelMax; ++x) {
+        if (x == 0 && _KernelShape != 0) continue;
+        float2 offset = _KernelShape == 0 ? offsets[x] : mul(R, float2(x, 0));
+        offset *= kernelScale * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+
         float4 s = 0.0f;
-        if (_PointFilter)
+        if (_FarPointFilter)
             s = tex2D(blurPoint, uv + offset);
         else
             s = tex2D(blurLinear, uv + offset);
@@ -417,7 +444,7 @@ float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
     }
 
     if (tex2D(QuarterCoC, uv).g > 0.0f) {
-        return lerp(col / max(0.01f, weightsSum), brightest, _Exposure);
+        return lerp(col / max(0.01f, weightsSum), brightest, _FarExposure);
     } else {
         return 0.0f;
     }
@@ -465,7 +492,7 @@ float4 PS_NearFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
         }
     }
 
-    if (cocNearBlurred <= 0.01f || !_Fill)
+    if (cocNearBlurred <= 0.01f)
         return base;
 
     return col;
@@ -485,7 +512,7 @@ float4 PS_FarFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
         }
     }
 
-    if (farCoC <= 0.01f || !_Fill)
+    if (farCoC <= 0.01f)
         return base;
 
     return col;

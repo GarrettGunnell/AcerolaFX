@@ -118,6 +118,13 @@ uniform float _FarExposure <
     ui_tooltip = "Radius of max filter to try and mitigate undersampling.";
 > = 0.0f;
 
+uniform bool _PreventSpillage <
+    ui_category = "Advanced Settings";
+    ui_category_closed = true;
+    ui_label = "Prevent Spillage";
+    ui_tooltip = "Attempt to prevent intensity leakage from background pixels.";
+> = false;
+
 uniform int _CoCFill <
     ui_category = "Advanced Settings";
     ui_category_closed = true;
@@ -327,6 +334,10 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
     float4 base = tex2D(blurPoint, uv);
     float4 col = base;
     float4 brightest = col;
+    
+    float baseDepth = ReShade::GetLinearizedDepth(uv);
+    float baseCoC = tex2D(CoCLinear, uv).r;
+    int weightsSum = 1;
 
     float theta = radians(rotation + _KernelRotation);
     float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
@@ -346,12 +357,19 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
         else
             s = tex2D(blurLinear, uv + offset);
 
-        col += s;
-        brightest = max(brightest, s);
+        float sCoC = tex2D(CoCLinear, uv + offset).r;
+        float sDepth = ReShade::GetLinearizedDepth(uv + offset);
+        
+        bool discardSample = sCoC < baseCoC && sDepth < baseDepth && _PreventSpillage;
+        if (!discardSample) {
+            col += s;
+            brightest = max(brightest, s);
+            ++weightsSum;
+        }
     }
     
     if (cocNearBlurred > 0.0f) {
-        return float4(lerp(col.rgb / (_KernelShape == 0 ? 49 : (kernelSize * 2 + 1)), brightest.rgb, _NearExposure), 1.0f);
+        return float4(lerp(col.rgb / weightsSum, brightest.rgb, _NearExposure), 1.0f);
     } else {
         return float4(base.rgb, 1.0f);
     }
@@ -381,6 +399,9 @@ float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
     float4 brightest = col;
     float weightsSum = tex2D(CoC, uv).y;
 
+    float baseDepth = ReShade::GetLinearizedDepth(uv);
+    float baseCoC = tex2D(CoCLinear, uv).g;
+
     float theta = radians(rotation + _KernelRotation);
     float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
 
@@ -399,11 +420,14 @@ float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
         else
             s = tex2D(blurLinear, uv + offset);
 
-        float weight = tex2D(CoC, uv + offset).g;
-
-        brightest = max(brightest, s * weight);
-        col += s * weight;
-        weightsSum += weight;
+        float weight = tex2D(CoCLinear, uv + offset).g;
+        float sDepth = ReShade::GetLinearizedDepth(uv + offset);
+        bool discardSample = weight < baseCoC && sDepth < baseDepth && _PreventSpillage;
+        if (!discardSample) {
+            brightest = max(brightest, s * weight);
+            col += s * weight;
+            weightsSum += weight;
+        }
     }
 
     if (tex2D(CoC, uv).g > 0.0f) {

@@ -479,44 +479,42 @@ float4 PS_BlendFarKernel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : 
     return _KernelShape != 5 ? min(f1, f2) : max(f1, f2);
 }
 
-float4 PS_NearFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
+void CS_Fill(uint3 tid : SV_DISPATCHTHREADID) {
+    float cocNearBlurred = tex2Dfetch(NearCoCBlur, tid.xy * 0.5f).r;
     
-    float4 col = tex2D(AFXTemp1::RenderTexLinear, uv);
+    float4 col = tex2Dfetch(AFXTemp1::RenderTexLinear, tid.xy);
     float4 base = col;
 
     [loop]
     for (int x = -_NearFillWidth; x <= _NearFillWidth; ++x) {
         [loop]
         for (int y = -_NearFillWidth; y <= _NearFillWidth; ++y) {
-            col = max(col, tex2D(AFXTemp1::RenderTexLinear, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
+            col = max(col, tex2Dfetch(AFXTemp1::RenderTexLinear, tid.xy + float2(x, y)));
         }
     }
 
     if (cocNearBlurred <= 0.01f)
-        return float4(base.rgb, 1.0f);
+        tex2Dstore(AFXTemp2::s_RenderTex, tid.xy, float4(base.rgb, 1.0f));
+    else
+        tex2Dstore(AFXTemp2::s_RenderTex, tid.xy, float4(col.rgb, 1.0f));
 
-    return float4(col.rgb, 1.0f);
-}
-
-float4 PS_FarFill(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float farCoC = tex2D(QuarterCoC, uv).g;
+    float farCoC = tex2Dfetch(CoC, tid.xy).g;
     
-    float4 col = tex2D(AFXTemp3::RenderTexLinear, uv);
-    float4 base = col;
+    col = tex2Dfetch(AFXTemp3::RenderTexLinear, tid.xy);
+    base = col;
 
     [loop]
     for (int x = -_FarFillWidth; x <= _FarFillWidth; ++x) {
         [loop]
         for (int y = -_FarFillWidth; y <= _FarFillWidth; ++y) {
-            col = max(col, tex2D(AFXTemp3::RenderTexLinear, uv + float2(x, y) * float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT)));
+            col = max(col, tex2Dfetch(AFXTemp3::RenderTexLinear, tid.xy + float2(x, y)));
         }
     }
 
     if (farCoC <= 0.01f)
-        return base;
-
-    return col;
+        tex2Dstore(AFXTemp4::s_RenderTex, tid.xy, float4(base.rgb, 1.0f));
+    else
+        tex2Dstore(AFXTemp4::s_RenderTex, tid.xy, float4(col.rgb, 1.0f));
 }
 
 float4 PS_Composite(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -718,18 +716,11 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
     }
     
     pass {
-        RenderTarget = AFXTemp2::AFX_RenderTex2;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_NearFill;
+        ComputeShader = CS_Fill<8, 8>;
+        DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
+        DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }
 
-    pass {
-        RenderTarget = AFXTemp4::AFX_RenderTex4;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_FarFill;
-    }
 
     pass {
         RenderTarget = AFX_FullPing;

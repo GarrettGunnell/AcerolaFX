@@ -4,6 +4,11 @@
 #include "Includes/AcerolaFX_TempTex3.fxh"
 #include "Includes/AcerolaFX_TempTex4.fxh"
 
+uniform bool _ConsiderSkyInfinity <
+    ui_label = "Consider Sky Infinity";
+    ui_tooltip = "Enable to consider the skybox infinitely far away. Disable to focus on sky.";
+> = true;
+
 uniform float _FocalPlaneDistance <
     ui_min = 0.0f; ui_max = 1000.0f;
     ui_label = "Focal Plane";
@@ -298,6 +303,9 @@ float4 PS_CoC(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
         farCOC = 0.0f;
     else if (depth < farEnd)
         farCOC = 1.0f / (farEnd - farBegin) * depth + -farBegin / (farEnd - farBegin);
+    
+    if (depth >= 999.0f && _ConsiderSkyInfinity)
+        farCOC = 1.0f;
     
     return saturate(float4(nearCOC, farCOC, 0.0f, 1.0f));
 }

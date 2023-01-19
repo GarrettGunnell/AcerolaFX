@@ -30,7 +30,8 @@ uniform int _InverseTonemapper <
     ui_label = "Inverse Tonemap";
     ui_tooltip = "Convert ldr to sdr.";
     ui_items = "No Tonemapper\0"
-               "Extended Reinhard\0";
+               "Extended Reinhard\0"
+               "Lottes\0";
 > = 0;
 
 uniform bool _ReverseTonemap <
@@ -47,6 +48,22 @@ uniform float _Exposure <
     ui_label = "Exposure";
     ui_type = "drag";
     ui_tooltip = "Adjust exposure of the far and near fields.";
+> = 1.0f;
+
+uniform bool _UseKaris <
+    ui_category = "Tonemap Settings";
+    ui_category_closed = true;
+    ui_label = "Inverse Karis Average";
+    ui_tooltip = "Give more weight to brighter pixels for more realistic highlights";
+> = true;
+
+uniform float _LuminanceBias <
+    ui_category = "Tonemap Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Luminance Bias";
+    ui_type = "slider";
+    ui_tooltip = "Adjust luminance bias for inverse karis average.";
 > = 1.0f;
 
 uniform int _KernelShape <
@@ -178,6 +195,11 @@ texture2D AFX_CoC { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG8; 
 sampler2D CoC { Texture = AFX_CoC; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 sampler2D CoCLinear { Texture = AFX_CoC; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
 
+texture2D AFX_NearColor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
+storage2D s_NearColor { Texture = AFX_NearColor; };
+sampler2D NearColor { Texture = AFX_NearColor; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+sampler2D NearColorLinear { Texture = AFX_NearColor; MagFilter = LINEAR; MinFilter = LINEAR; MipFilter = LINEAR;};
+
 texture2D AFX_FarColor { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16; };
 storage2D s_FarColor { Texture = AFX_FarColor; };
 sampler2D FarColor { Texture = AFX_FarColor; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
@@ -196,6 +218,10 @@ sampler2D Bokeh { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilt
 storage2D s_Bokeh { Texture = AFXTemp1::AFX_RenderTex1; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Bokeh, uv).rgba; }
 
+float Brightness(float3 c) {
+    return max(c.r, max(c.g, c.b));
+}
+
 float3 InverseTonemap(float3 col) {
     float3 x = col * _Exposure;
 
@@ -203,6 +229,8 @@ float3 InverseTonemap(float3 col) {
         return x;
     } else if (_InverseTonemapper == 1) { // Extended Reinhard
         return col / (_Exposure * max(1.0 - col / _Exposure, 0.001));
+    } else if (_InverseTonemapper == 2) { // Lottes
+        return x * rcp(_Exposure - Brightness(x));
     }
 
     else return 0.0f;
@@ -215,6 +243,8 @@ float3 Tonemap(float3 x) {
         return x;
     } else if (_InverseTonemapper == 1) { // Extended Reinhard
         return x * (_Exposure / (1.0 + x / _Exposure));
+    } else if (_InverseTonemapper == 2) { // Lottes
+        return x * rcp(Brightness(x) + _Exposure);
     }
 
     else return 0.0f;
@@ -310,7 +340,7 @@ float4 PS_CoC(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     return saturate(float4(nearCOC, farCOC, 0.0f, 1.0f));
 }
 
-void CS_CreateFarColor(uint3 tid : SV_DISPATCHTHREADID) {
+void CS_CreateFarAndNearColor(uint3 tid : SV_DISPATCHTHREADID) {
     float2 pixelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float2 uv = tid.xy * pixelSize;
 
@@ -318,7 +348,8 @@ void CS_CreateFarColor(uint3 tid : SV_DISPATCHTHREADID) {
     float4 col = tex2Dlod(Common::AcerolaBufferLinear, float4(uv, 0, 0));
 	float4 colorMulCOCFar = col * coc.g;
 
-    tex2Dstore(s_FarColor, tid.xy, float4((colorMulCOCFar.rgb), 1.0f));
+    tex2Dstore(s_FarColor, tid.xy, float4(InverseTonemap(colorMulCOCFar.rgb), 1.0f));
+    tex2Dstore(s_NearColor, tid.xy, float4(InverseTonemap(col.rgb), 1.0f));
 }
 
 float2 PS_MaxCoCX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -384,18 +415,27 @@ int GetShapeRotation(int n) {
     return 0;
 }
 
+float KarisWeight(float3 col) {
+    if (_UseKaris)
+        return rcp(rcp(Common::Luminance(col) + _LuminanceBias));
+
+    return 1;
+}
+
 float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
     int kernelSize = _NearKernelSize;
     float kernelScale = _Strength >= 0.25f ? _Strength : 0.25f;
     float cocNearBlurred = tex2D(NearCoCBlur, uv).r;
     
     float4 base = tex2D(blurPoint, uv);
+
     float4 col = base;
     float4 brightest = col;
+    float karisSum = KarisWeight(base.rgb);
+    col *= karisSum;
     
     float baseDepth = ReShade::GetLinearizedDepth(uv);
     float baseCoC = tex2D(CoCLinear, uv).r;
-    int weightsSum = 1;
 
     float theta = radians(rotation + _KernelRotation);
     float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
@@ -414,28 +454,28 @@ float4 Near(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) 
             s = tex2D(blurPoint, uv + offset);
         else
             s = tex2D(blurLinear, uv + offset);
-        s.rgb = InverseTonemap(s.rgb);
         
+        float karisWeight = KarisWeight(s.rgb);
         float sCoC = tex2D(CoCLinear, uv + offset).r;
         float sDepth = ReShade::GetLinearizedDepth(uv + offset);
 
         bool discardSample = sCoC < baseCoC && sDepth < baseDepth && _PreventSpillage;
         if (!discardSample) {
-            col += s;
-            brightest = max(brightest, s);
-            ++weightsSum;
+            col += s * karisWeight;
+            brightest = max(brightest, s * karisWeight);
+            karisSum += karisWeight;
         }
     }
     
     if (cocNearBlurred > 0.0f) {
-        return float4(lerp(col.rgb / weightsSum, brightest.rgb, _NearExposure), 1.0f);
+        return float4(lerp(col.rgb / karisSum, brightest.rgb, _NearExposure), 1.0f);
     } else {
         return float4(base.rgb, 1.0f);
     }
 }
 
 float4 PS_NearBlurX(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Near(uv, GetShapeRotation(0), Common::AcerolaBuffer, Common::AcerolaBufferLinear);
+    return Near(uv, GetShapeRotation(0), NearColor, NearColorLinear);
 }
 
 float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -444,7 +484,7 @@ float4 PS_NearBlurY(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 
 float4 PS_NearBlurX2(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     if (_KernelShape == 3 || _KernelShape == 4 || _KernelShape == 5)
-        return Near(uv, GetShapeRotation(2), Common::AcerolaBuffer, Common::AcerolaBufferLinear);
+        return Near(uv, GetShapeRotation(2), NearColor, NearColorLinear);
     else
         return 0.0f;
 }
@@ -463,6 +503,9 @@ float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
     float4 col = tex2D(blurPoint, uv);
     float4 brightest = col;
     float weightsSum = tex2D(CoC, uv).y;
+
+    float karisSum = KarisWeight(col.rgb);
+    col *= karisSum;
 
     float baseDepth = ReShade::GetLinearizedDepth(uv);
     float baseCoC = tex2D(CoCLinear, uv).g;
@@ -484,20 +527,24 @@ float4 Far(float2 uv, int rotation, sampler2D blurPoint, sampler2D blurLinear) {
             s = tex2D(blurPoint, uv + offset);
         else
             s = tex2D(blurLinear, uv + offset);
-        s.rgb = InverseTonemap(s.rgb);
+        //s.rgb = InverseTonemap(s.rgb);
 
         float weight = tex2D(CoCLinear, uv + offset).g;
+        float karisWeight = KarisWeight(s.rgb);
+
         float sDepth = ReShade::GetLinearizedDepth(uv + offset);
         bool discardSample = weight < baseCoC && sDepth < baseDepth && _PreventSpillage;
         if (!discardSample) {
             brightest = max(brightest, s * weight);
-            col += s * weight;
-            weightsSum += weight;
+            //col += s * weight;
+            //weightsSum += weight;
+            col += s * karisWeight;
+            karisSum += karisWeight;
         }
     }
 
     if (tex2D(CoC, uv).g > 0.0f) {
-        return lerp(col / max(0.01f, weightsSum), brightest, _FarExposure);
+        return lerp(col * rcp(karisSum), brightest, _FarExposure);
     } else {
         return 0.0f;
     }
@@ -652,7 +699,7 @@ technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera
     }
 
     pass {
-        ComputeShader = CS_CreateFarColor<8, 8>;
+        ComputeShader = CS_CreateFarAndNearColor<8, 8>;
         DispatchSizeX = (BUFFER_WIDTH + 7) / 8;
         DispatchSizeY = (BUFFER_HEIGHT + 7) / 8;
     }

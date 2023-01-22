@@ -34,10 +34,18 @@ uniform float _Intensity <
 uniform bool _UseKarisAvg <
     ui_category = "Advanced settings";
     ui_category_closed = true;
-    ui_min = 0.01f; ui_max = 2.0f;
     ui_label = "Use Karis Average";
     ui_tooltip = "Suppress very bright outlying hdr values to prevent fireflies (pixel flickering).";
 > = true;
+
+uniform float _LuminanceBias <
+    ui_category = "Advanced settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 2.0f;
+    ui_label = "Luminance Bias";
+    ui_type = "drag";
+    ui_tooltip = "Luminance bias for karis average.";
+> = 1.0f;
 
 uniform float _DownSampleDelta <
     ui_category = "Advanced settings";
@@ -151,10 +159,10 @@ float3 SampleBox(sampler2D texSampler, float2 uv, float2 texelSize, float delta)
     float4 s3 = tex2D(texSampler, uv + o.xw);
     float4 s4 = tex2D(texSampler, uv + o.zw);
 
-    float s1w = rcp(Brightness(s1.rgb) + 1);
-    float s2w = rcp(Brightness(s2.rgb) + 1);
-    float s3w = rcp(Brightness(s3.rgb) + 1);
-    float s4w = rcp(Brightness(s4.rgb) + 1);
+    float s1w = rcp(Brightness(s1.rgb) + _LuminanceBias);
+    float s2w = rcp(Brightness(s2.rgb) + _LuminanceBias);
+    float s3w = rcp(Brightness(s3.rgb) + _LuminanceBias);
+    float s4w = rcp(Brightness(s4.rgb) + _LuminanceBias);
 
     float4 s = 0.0f;
     if (_UseKarisAvg) {

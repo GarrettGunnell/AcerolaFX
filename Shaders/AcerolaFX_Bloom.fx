@@ -31,11 +31,20 @@ uniform float _Intensity <
     ui_tooltip = "Adjust bloom intensity.";
 > = 1.0f;
 
+uniform bool _UseKarisAvg <
+    ui_category = "Advanced settings";
+    ui_category_closed = true;
+    ui_min = 0.01f; ui_max = 2.0f;
+    ui_label = "Use Karis Average";
+    ui_tooltip = "Suppress very bright outlying hdr values to prevent fireflies (pixel flickering).";
+> = true;
+
 uniform float _DownSampleDelta <
     ui_category = "Advanced settings";
     ui_category_closed = true;
     ui_min = 0.01f; ui_max = 2.0f;
     ui_label = "Down Sample Delta";
+    ui_type = "drag";
     ui_tooltip = "Adjust sampling offset when downsampling the back buffer.";
 > = 1.0f;
 
@@ -44,6 +53,7 @@ uniform float _UpSampleDelta <
     ui_category_closed = true;
     ui_min = 0.01f; ui_max = 2.0f;
     ui_label = "Up Sample Delta";
+    ui_type = "drag";
     ui_tooltip = "Adjust sampling offset when upsampling the downscaled back buffer.";
 > = 0.5f;
 
@@ -130,11 +140,33 @@ uniform float _Saturation <
     ui_tooltip = "Adjust saturation.";
 > = 1.0f;
 
+float Brightness(float3 c) {
+    return max(c.r, max(c.g, c.b));
+}
+
 float3 SampleBox(sampler2D texSampler, float2 uv, float2 texelSize, float delta) {
     float4 o = texelSize.xyxy * float2(-delta, delta).xxyy;
-    float4 s = tex2D(texSampler, uv + o.xy) + tex2D(texSampler, uv + o.zy) + tex2D(texSampler, uv + o.xw) + tex2D(texSampler, uv + o.zw);
+    float4 s1 = tex2D(texSampler, uv + o.xy);
+    float4 s2 = tex2D(texSampler, uv + o.zy);
+    float4 s3 = tex2D(texSampler, uv + o.xw);
+    float4 s4 = tex2D(texSampler, uv + o.zw);
 
-    return s.rgb * 0.25f;
+    float s1w = rcp(Brightness(s1.rgb) + 1);
+    float s2w = rcp(Brightness(s2.rgb) + 1);
+    float s3w = rcp(Brightness(s3.rgb) + 1);
+    float s4w = rcp(Brightness(s4.rgb) + 1);
+
+    float4 s = 0.0f;
+    if (_UseKarisAvg) {
+        s = s1 * s1w + s2 * s2w + s3 * s3w + s4 * s4w;
+        
+        return s.rgb * rcp(s1w + s2w + s3w + s4w);
+    }
+    else {
+        s = s1 + s2 + s3 + s4;
+        
+        return s.rgb * 0.25f;
+    }
 }
 
 float3 Prefilter(float3 col) {

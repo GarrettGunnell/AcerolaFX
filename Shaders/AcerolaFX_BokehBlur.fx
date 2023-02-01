@@ -57,13 +57,23 @@ uniform bool _UseKaris <
     ui_tooltip = "Give more weight to brighter pixels for more realistic highlights";
 > = true;
 
+
+uniform float _LuminanceMultiplier <
+    ui_category = "Tonemap Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Luminance Multiplier";
+    ui_type = "slider";
+    ui_tooltip = "Adjust luminance multiplier for inverse karis weighting.";
+> = 1.0f;
+
 uniform float _LuminanceBias <
     ui_category = "Tonemap Settings";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Luminance Bias";
     ui_type = "slider";
-    ui_tooltip = "Adjust luminance bias for inverse karis average.";
+    ui_tooltip = "Adjust luminance bias for inverse karis weight.";
 > = 1.0f;
 
 uniform int _KernelShape <
@@ -230,7 +240,7 @@ float3 InverseTonemap(float3 col) {
     } else if (_InverseTonemapper == 1) { // Extended Reinhard
         return col / (_Exposure * max(1.0 - col / _Exposure, 0.001));
     } else if (_InverseTonemapper == 2) { // Lottes
-        return x * rcp(_Exposure - Brightness(x));
+        return saturate(x) * rcp(_Exposure - Brightness(saturate(x)));
     }
 
     else return 0.0f;
@@ -417,7 +427,7 @@ int GetShapeRotation(int n) {
 
 float KarisWeight(float3 col) {
     if (_UseKaris)
-        return rcp(rcp(Common::Luminance(col) + _LuminanceBias));
+        return pow(Common::Luminance(col), _LuminanceMultiplier) + _LuminanceBias;
 
     return 1;
 }
@@ -637,6 +647,7 @@ float4 PS_Composite(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
     float blend = _Strength >= 0.25f ? 1.0f : 4.0f * _Strength;
 
     float4 result = tex2D(Common::AcerolaBuffer, uv);
+    result.rgb = InverseTonemap(result.rgb);
 
     float2 uv00 = uv;
     float2 uv10 = uv + float2(pixelSize.x, 0.0f);
@@ -680,14 +691,14 @@ float4 PS_Composite(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TA
 
     dofFar /= weightsSum;
 
-    result.rgb = lerp(result.rgb, Tonemap(dofFar.rgb), blend * cocFar);
+    result.rgb = lerp(result.rgb, (dofFar.rgb), blend * cocFar);
 
     float cocNear = tex2D(NearCoCBlurLinear, uv).r;
     float4 dofNear = tex2D(AFXTemp2::RenderTexLinear, uv);
 
-    result.rgb = lerp(result.rgb, Tonemap(dofNear.rgb), blend * cocNear);
+    result.rgb = lerp(result.rgb, (dofNear.rgb), blend * cocNear);
 
-    return result;
+    return float4(Tonemap(result.rgb), 1.0f);
 }
 
 technique AFX_BokehBlur < ui_label = "Bokeh Blur"; ui_tooltip = "Simulate camera focusing."; > {

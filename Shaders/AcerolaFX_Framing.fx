@@ -1,112 +1,60 @@
-#include "Includes/AcerolaFX_Common.fxh"
-#include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_Framing.fxh"
 
-uniform float3 _FrameColor <
-    ui_type = "color";
-    ui_label = "Frame Color";
-> = 0.0f;
-
-uniform int2 _Offset <
-    ui_type = "drag";
-    ui_label = "Position";
-    ui_tooltip = "Positional offset from center of screen.";
+uniform uint _Frames <
+    ui_type = "combo";
+    ui_label = "Frame Count";
+    ui_tooltip = "Number of frames you would like.";
+    ui_items = "1\0"
+               "2\0"
+               "3\0"
+               "4\0"
+               "5\0"
+               "6\0"
+               "7\0"
+               "8\0"
+               "9\0"
+               "10\0";
+    ui_bind = "AFX_FRAME_COUNT";
 > = 0;
 
-uniform float _Theta <
-    ui_min = -180.0f; ui_max = 180.0f;
-    ui_label = "Rotation";
-    ui_type = "drag";
-    ui_tooltip = "Adjust rotation of the frame.";
-> = 0;
+#ifndef AFX_FRAME_COUNT
+    #define AFX_FRAME_COUNT 0
+#endif
 
-uniform float _Alpha <
-    ui_min = 0f; ui_max = 1.0f;
-    ui_label = "Alpha";
-    ui_type = "drag";
-    ui_tooltip = "Adjust alpha of the frame.";
-> = 1f;
+AFX_FRAME_SHADOW_CLONE(AFX_Frame, "Framing", "Frame 1 Settings", _FrameShape, _FrameColor, _FrameAlpha, _FrameRadius, _FrameInvert, _FrameOffset, _FrameTheta, _FrameDepthCutoff, PS_Frame)
 
-uniform int _Left <
-    ui_min = -BUFFER_WIDTH; ui_max = BUFFER_WIDTH;
-    ui_category = "Frame Dimensions";
-    ui_category_closed = true;
-    ui_label = "Left";
-    ui_type = "drag";
-    ui_tooltip = "Adjust frame cutoff for left side of the screen.";
-> = 0;
+#if AFX_FRAME_COUNT > 0
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame2, "Frame 2", "Frame 2 Settings", _Frame2Shape, _Frame2Color, _Frame2Alpha, _Frame2Radius, _Frame2Invert, _Frame2Offset, _Frame2Theta, _Frame2DepthCutoff, PS_Frame2)
+#endif
 
-uniform int _Right <
-    ui_min = -BUFFER_WIDTH; ui_max = BUFFER_WIDTH;
-    ui_category = "Frame Dimensions";
-    ui_category_closed = true;
-    ui_label = "Right";
-    ui_type = "drag";
-    ui_tooltip = "Adjust frame cutoff for right side of the screen.";
-> = 0;
+#if AFX_FRAME_COUNT > 1
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame3, "Frame 3", "Frame 3 Settings", _Frame3Shape, _Frame3Color, _Frame3Alpha, _Frame3Radius, _Frame3Invert, _Frame3Offset, _Frame3Theta, _Frame3DepthCutoff, PS_Frame3)
+#endif
 
-uniform int _Top <
-    ui_min = -BUFFER_HEIGHT; ui_max = BUFFER_HEIGHT;
-    ui_category = "Frame Dimensions";
-    ui_category_closed = true;
-    ui_label = "Top";
-    ui_type = "drag";
-    ui_tooltip = "Adjust frame cutoff for top side of the screen.";
-> = 0;
+#if AFX_FRAME_COUNT > 2
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame4, "Frame 4", "Frame 4 Settings", _Frame4Shape, _Frame4Color, _Frame4Alpha, _Frame4Radius, _Frame4Invert, _Frame4Offset, _Frame4Theta, _Frame4DepthCutoff, PS_Frame4)
+#endif
 
-uniform int _Bottom <
-    ui_min = -BUFFER_HEIGHT; ui_max = BUFFER_HEIGHT;
-    ui_category = "Frame Dimensions";
-    ui_category_closed = true;
-    ui_label = "Bottom";
-    ui_type = "drag";
-    ui_tooltip = "Adjust frame cutoff for bottom side of the screen.";
-> = 0;
+#if AFX_FRAME_COUNT > 3
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame5, "Frame 5", "Frame 5 Settings", _Frame5Shape, _Frame5Color, _Frame5Alpha, _Frame5Radius, _Frame5Invert, _Frame5Offset, _Frame5Theta, _Frame5DepthCutoff, PS_Frame5)
+#endif
 
+#if AFX_FRAME_COUNT > 4
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame6, "Frame 6", "Frame 6 Settings", _Frame6Shape, _Frame6Color, _Frame6Alpha, _Frame6Radius, _Frame6Invert, _Frame6Offset, _Frame6Theta, _Frame6DepthCutoff, PS_Frame6)
+#endif
 
-uniform int _DepthCutoff <
-    ui_min = 0; ui_max = 1000;
-    ui_category = "Depth";
-    ui_category_closed = true;
-    ui_label = "Depth Cutoff";
-    ui_type = "slider";
-    ui_tooltip = "Distance at which depth is masked by the frame.";
-> = 0;
+#if AFX_FRAME_COUNT > 5
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame7, "Frame 7", "Frame 7 Settings", _Frame7Shape, _Frame7Color, _Frame7Alpha, _Frame7Radius, _Frame7Invert, _Frame7Offset, _Frame7Theta, _Frame7DepthCutoff, PS_Frame7)
+#endif
 
-sampler2D Framing { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
-float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Framing, uv).rgba; }
+#if AFX_FRAME_COUNT > 6
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame8, "Frame 8", "Frame 8 Settings", _Frame8Shape, _Frame8Color, _Frame8Alpha, _Frame8Radius, _Frame8Invert, _Frame8Offset, _Frame8Theta, _Frame8DepthCutoff, PS_Frame8)
+#endif
 
-float4 PS_Framing(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = saturate(tex2D(Common::AcerolaBuffer, uv).rgba);
-    int depth = ReShade::GetLinearizedDepth(uv) * 1000;
+#if AFX_FRAME_COUNT > 7
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame9, "Frame 9", "Frame 9 Settings", _Frame9Shape, _Frame9Color, _Frame9Alpha, _Frame9Radius, _Frame9Invert, _Frame9Offset, _Frame9Theta, _Frame9DepthCutoff, PS_Frame9)
+#endif
 
-    float theta = radians(_Theta);
-    float2x2 R = float2x2(float2(cos(theta), -sin(theta)), float2(sin(theta), cos (theta)));
-
-    float2 minBounds = float2(_Left, _Top) + _Offset;
-    float2 maxBounds = float2(BUFFER_WIDTH - _Right, BUFFER_HEIGHT - _Bottom) + _Offset;
-
-    float2 offset = float2(BUFFER_WIDTH / 2, BUFFER_HEIGHT / 2) + _Offset;
-    float2 rotatedPosition = mul(R, position.xy - offset) + offset;
-
-    if ((any(rotatedPosition < minBounds) || any(maxBounds < rotatedPosition)) && _DepthCutoff < depth)
-        return float4(lerp(col.xyz, _FrameColor, _Alpha), 1.0f);
-
-
-    return col;
-}
-
-technique AFX_Framing < ui_label = "Framing"; ui_tooltip = "Overlay a frame for composition."; > {
-    pass {
-        RenderTarget = AFXTemp1::AFX_RenderTex1;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_Framing;
-    }
-
-    pass EndPass {
-        RenderTarget = Common::AcerolaBufferTex;
-
-        VertexShader = PostProcessVS;
-        PixelShader = PS_EndPass;
-    }
-}
+#if AFX_FRAME_COUNT > 8
+    AFX_FRAME_SHADOW_CLONE(AFX_Frame9, "Frame 10", "Frame 10 Settings", _Frame10Shape, _Frame10Color, _Frame10Alpha, _Frame10Radius, _Frame10Invert, _Frame10Offset, _Frame10Theta, _Frame10DepthCutoff, PS_Frame10)
+#endif

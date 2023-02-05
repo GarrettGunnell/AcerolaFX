@@ -1,6 +1,14 @@
 #include "Includes/AcerolaFX_Common.fxh"
 #include "Includes/AcerolaFX_TempTex1.fxh"
 
+uniform int _GrainSize <
+    ui_min = 0; ui_max = 8;
+    ui_label = "Grain Size";
+    ui_type = "slider";
+    ui_tooltip = "Adjust size of the grain.";
+    ui_bind = "AFX_NOISE_DOWNSCALE_FACTOR";
+> = 0;
+
 uniform float _GrainIntensity <
     ui_min = 0.0f; ui_max = 2.0f;
     ui_label = "Grain Intensity";
@@ -76,7 +84,7 @@ float hash(uint n) {
 }
 
 void CS_GenerateNoise(uint3 tid : SV_DISPATCHTHREADID) {
-    uint seed = tid.x + AFX_NOISETEX_WIDTH * tid.y + AFX_NOISETEX_WIDTH * AFX_NOISETEX_HEIGHT + frameCount * deltaTime * _AnimateNoise;
+    uint seed = tid.x + AFX_NOISETEX_WIDTH * tid.y + AFX_NOISETEX_WIDTH * AFX_NOISETEX_HEIGHT + frameCount * deltaTime * 0.1f * _AnimateNoise;
     tex2Dstore(s_Noise, tid.xy, hash(seed));
 }
 

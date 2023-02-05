@@ -7,33 +7,34 @@ uniform uint _DownscaleFactor <
     ui_label = "Downscale Factor";
     ui_type = "slider";
     ui_tooltip = "Which exponent of 2 to downscale by.";
-    ui_bind = "AFX_NUM_DOWNSCALES";
+    ui_bind = "AFX_DOWNSCALE_FACTOR";
 > = 0;
 
 uniform bool _Point <
     ui_label = "Point Filter";
 > = false;
 
-#if AFX_NUM_DOWNSCALES == 1
+#if AFX_DOWNSCALE_FACTOR == 1
  #define AFX_DownscaleTex DownScale::HalfTex
-#elif AFX_NUM_DOWNSCALES == 2
+#elif AFX_DOWNSCALE_FACTOR == 2
  #define AFX_DownscaleTex DownScale::QuarterTex
-#elif AFX_NUM_DOWNSCALES == 3
+#elif AFX_DOWNSCALE_FACTOR == 3
  #define AFX_DownscaleTex DownScale::EighthTex
-#elif AFX_NUM_DOWNSCALES == 4
+#elif AFX_DOWNSCALE_FACTOR == 4
  #define AFX_DownscaleTex DownScale::SixteenthTex
-#elif AFX_NUM_DOWNSCALES == 5
+#elif AFX_DOWNSCALE_FACTOR == 5
  #define AFX_DownscaleTex DownScale::ThirtySecondthTex
-#elif AFX_NUM_DOWNSCALES == 6
+#elif AFX_DOWNSCALE_FACTOR == 6
  #define AFX_DownscaleTex DownScale::SixtyFourthTex
-#elif AFX_NUM_DOWNSCALES == 7
+#elif AFX_DOWNSCALE_FACTOR == 7
  #define AFX_DownscaleTex DownScale::OneTwentyEighthTex
-#elif AFX_NUM_DOWNSCALES == 8
+#elif AFX_DOWNSCALE_FACTOR == 8
  #define AFX_DownscaleTex DownScale::TwoFiftySixthTex
 #else
  #define AFX_DownscaleTex AFXTemp1::AFX_RenderTex1
 #endif
 
+texture2D AFX_RenderTex1 { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler2D DownscalePoint { Texture = AFX_DownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 sampler2D Downscale { Texture = AFX_DownscaleTex; };
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Common::AcerolaBuffer, uv); }

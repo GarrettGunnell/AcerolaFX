@@ -31,7 +31,7 @@ uniform float _Intensity <
     ui_min = 0f; ui_max = 10.0f;
     ui_label = "Intensity";
     ui_type = "drag";
-    ui_tooltip = "Adjust how intense the offset is.";
+    ui_tooltip = "Adjust how intense the color offset is.";
 > = 1.0f;
 
 uniform float3 _ColorOffsets <

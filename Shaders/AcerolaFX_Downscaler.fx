@@ -1,11 +1,22 @@
 #include "Includes/AcerolaFX_Common.fxh"
+#include "Includes/AcerolaFX_TempTex1.fxh"
 #include "Includes/AcerolaFX_Downscales.fxh"
+
+uniform uint _DownscaleFactor <
+    ui_min = 0; ui_max = 8;
+    ui_label = "Downscale Factor";
+    ui_type = "slider";
+    ui_tooltip = "Which exponent of 2 to downscale by.";
+    ui_bind = "AFX_NUM_DOWNSCALES";
+> = 0;
 
 uniform bool _Point <
     ui_label = "Point Filter";
 > = false;
 
-#if AFX_NUM_DOWNSCALES == 2
+#if AFX_NUM_DOWNSCALES == 1
+ #define AFX_DownscaleTex DownScale::HalfTex
+#elif AFX_NUM_DOWNSCALES == 2
  #define AFX_DownscaleTex DownScale::QuarterTex
 #elif AFX_NUM_DOWNSCALES == 3
  #define AFX_DownscaleTex DownScale::EighthTex
@@ -20,7 +31,7 @@ uniform bool _Point <
 #elif AFX_NUM_DOWNSCALES == 8
  #define AFX_DownscaleTex DownScale::TwoFiftySixthTex
 #else
- #define AFX_DownscaleTex DownScale::HalfTex
+ #define AFX_DownscaleTex AFXTemp1::AFX_RenderTex1
 #endif
 
 sampler2D DownscalePoint { Texture = AFX_DownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };

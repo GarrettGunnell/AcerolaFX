@@ -14,6 +14,10 @@ uniform bool _Point <
     ui_label = "Point Filter";
 > = false;
 
+#ifndef AFX_DOWNSCALE_FACTOR
+    #define AFX_DOWNSCALE_FACTOR 0
+#endif
+
 #if AFX_DOWNSCALE_FACTOR == 1
  #define AFX_DownscaleTex DownScale::HalfTex
 #elif AFX_DOWNSCALE_FACTOR == 2

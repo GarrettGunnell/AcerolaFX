@@ -6,6 +6,13 @@ uniform bool _DebugMask <
     ui_tooltip = "View the chromatic aberration intensity mask.";
 > = false;
 
+uniform float2 _FocalOffset <
+    ui_min = -1.0f; ui_max = 1.0f;
+    ui_label = "Focal Point Offset";
+    ui_type = "drag";
+    ui_tooltip = "Positional offset of the focal point from the center of the screen.";
+> = 0.0f;
+
 uniform float2 _Radius <
     ui_min = 0f; ui_max = 5.0f;
     ui_label = "Focus Radius";
@@ -41,6 +48,7 @@ float4 PS_ChromaticAberration(float4 position : SV_POSITION, float2 uv : TEXCOOR
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
     float2 pos = uv - 0.5f;
+    pos -= _FocalOffset;
     pos *= _Radius;
     pos += 0.5f;
 

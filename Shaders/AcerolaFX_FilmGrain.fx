@@ -9,25 +9,19 @@ uniform int _GrainSize <
     ui_bind = "AFX_NOISE_DOWNSCALE_FACTOR";
 > = 0;
 
-uniform float _GrainIntensity <
+uniform float _Intensity <
     ui_min = 0.0f; ui_max = 2.0f;
     ui_label = "Grain Intensity";
     ui_type = "drag";
     ui_tooltip = "Adjust strength of the grain.";
 > = 0.15f;
 
-uniform uint _BlendMode <
-    ui_type = "combo";
-    ui_label = "Blend Mode";
-    ui_tooltip = "How to blend the noise";
-    ui_items = "Add\0"
-               "Subtract\0"
-               "Multiply\0"
-               "Screen\0"
-               "Color Dodge\0"
-               "Color Burn\0"
-               "Overlay\0";
-> = 2;
+uniform float _Response <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Luminance Response";
+    ui_type = "drag";
+    ui_tooltip = "Adjust strength of the grain.";
+> = 0.15f;
 
 uniform bool _AnimateNoise <
     ui_label = "Animate";
@@ -130,21 +124,15 @@ void CS_SecondBlurPass(uint3 tid : SV_DISPATCHTHREADID) {
     }
 }
 
-float4 BlendNoise(float4 a, float b) {
-    if (_BlendMode == 0) return a + b;
-    if (_BlendMode == 1) return a - b;
-    if (_BlendMode == 2) return a * b;
-    if (_BlendMode == 3) return 1.0f - (1.0f - a) * (1.0f - b);
-    if (_BlendMode == 4) return a / (1.0f - (b - 0.001f));
-    if (_BlendMode == 5) return 1.0f - ((1.0f - a) / (b + 0.001));
-    else return (Common::Luminance(a.rgb) < 0.5) ? 2.0f * a * b : 1.0f - 2.0f * (1.0f - a) * (1.0f - b);
-}
-
 float4 PS_FilmGrain(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 c = tex2D(Common::AcerolaBuffer, uv);
     float noise = tex2D(Noise, uv).r;
 
-    return lerp(c, BlendNoise(c, noise), _GrainIntensity);
+    noise = 2 * noise - 1;
+    float weight = 1.0f - sqrt(Common::Luminance(c.rgb));
+    weight = lerp(1.0f, weight, _Response);
+
+    return float4(c.rgb + c.rgb * noise * _Intensity * weight, 1.0f);
 }
 
 technique AFX_FilmGrain < ui_label = "Film Grain"; ui_tooltip = "(HDR/LDR) Applies film grain to the render."; > {

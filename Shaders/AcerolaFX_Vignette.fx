@@ -1,6 +1,11 @@
 #include "Includes/AcerolaFX_Common.fxh"
 #include "Includes/AcerolaFX_TempTex1.fxh"
 
+uniform float3 _VignetteColor <
+    ui_type = "color";
+    ui_label = "Vignette Color";
+> = 0.0f;
+
 uniform float2 _VignetteOffset <
     ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Vignette Offset";
@@ -40,7 +45,7 @@ float4 PS_Vignette(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
     d = pow(saturate(d), _Roundness);
     float vfactor = pow(saturate(1.0f - dot(d, d)), _Smoothness);
 
-    return float4(lerp(0.0f, col.rgb, vfactor), 1.0f);
+    return float4(lerp(_VignetteColor, col.rgb, vfactor), 1.0f);
 }
 
 technique AFX_Vignette < ui_label = "Vignette"; ui_tooltip = "Apply a cinematic gradient border to the screen."; > {

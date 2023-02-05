@@ -1,9 +1,38 @@
 #include "Includes/AcerolaFX_Common.fxh"
 #include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_Downscales.fxh"
 
-#ifndef AFX_DOWNSCALE_FACTOR
-    #define AFX_DOWNSCALE_FACTOR 1
+#ifndef AFX_DITHER_DOWNSCALE
+    #define AFX_DITHER_DOWNSCALE 1
 #endif
+
+#if AFX_DITHER_DOWNSCALE == 1
+ #define AFX_DitherDownscaleTex DownScale::HalfTex
+#elif AFX_DITHER_DOWNSCALE == 2
+ #define AFX_DitherDownscaleTex DownScale::QuarterTex
+#elif AFX_DITHER_DOWNSCALE == 3
+ #define AFX_DitherDownscaleTex DownScale::EighthTex
+#elif AFX_DITHER_DOWNSCALE == 4
+ #define AFX_DitherDownscaleTex DownScale::SixteenthTex
+#elif AFX_DITHER_DOWNSCALE == 5
+ #define AFX_DitherDownscaleTex DownScale::ThirtySecondthTex
+#elif AFX_DITHER_DOWNSCALE == 6
+ #define AFX_DitherDownscaleTex DownScale::SixtyFourthTex
+#elif AFX_DITHER_DOWNSCALE == 7
+ #define AFX_DitherDownscaleTex DownScale::OneTwentyEighthTex
+#elif AFX_DITHER_DOWNSCALE == 8
+ #define AFX_DitherDownscaleTex DownScale::TwoFiftySixthTex
+#else
+ #define AFX_DitherDownscaleTex AFXTemp1::AFX_RenderTex1
+#endif
+
+uniform uint _DownscaleFactor <
+    ui_min = 0; ui_max = 8;
+    ui_label = "Downscale Factor";
+    ui_type = "slider";
+    ui_tooltip = "Which exponent of 2 to downscale by.";
+    ui_bind = "AFX_DITHER_DOWNSCALE";
+> = 0;
 
 uniform float _Spread <
     ui_min = 0.0f; ui_max = 1.0f;
@@ -80,11 +109,8 @@ float GetBayer8(int x, int y) {
     return float(bayer8[(x % uint(8)) + (y % uint(8)) * 8]) * (1.0f / 64.0f) - 0.5f;
 }
 
-#define PWRTWO(EXP) (1 << (EXP))
-#define AFX_WIDTH BUFFER_WIDTH / PWRTWO(AFX_DOWNSCALE_FACTOR)
-#define AFX_HEIGHT BUFFER_HEIGHT / PWRTWO(AFX_DOWNSCALE_FACTOR)
 
-sampler2D Dither { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+sampler2D Dither { Texture = AFX_DitherDownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float4 UI = tex2D(ReShade::BackBuffer, uv);
@@ -95,8 +121,12 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
     float4 col = tex2D(Dither, uv);
     float4 UI = tex2D(ReShade::BackBuffer, uv);
 
-    int x = uv.x * AFX_WIDTH;
-    int y = uv.y * AFX_HEIGHT;
+    int pow2 = exp2(AFX_DITHER_DOWNSCALE);
+    int width = BUFFER_WIDTH / pow2;
+    int height = BUFFER_HEIGHT / pow2;
+
+    int x = uv.x * width;
+    int y = uv.y * height;
 
     float bayerValues[3] = { 0, 0, 0 };
     bayerValues[0] = GetBayer2(x, y);
@@ -114,7 +144,7 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
 
 technique AFX_Dither  <ui_label = "Dither"; ui_tooltip = "(LDR) Reduces the color palette of the image with ordered dithering."; >  {
     pass {
-        RenderTarget = AFXTemp1::AFX_RenderTex1;
+        RenderTarget = AFX_DitherDownscaleTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Downscale;

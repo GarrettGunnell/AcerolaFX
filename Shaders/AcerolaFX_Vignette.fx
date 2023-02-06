@@ -6,6 +6,13 @@ uniform float3 _VignetteColor <
     ui_label = "Vignette Color";
 > = 0.0f;
 
+uniform float2 _VignetteSize <
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Vignette Size";
+    ui_type = "drag";
+    ui_tooltip = "Size of the vignette axes.";
+> = 1.0f;
+
 uniform float2 _VignetteOffset <
     ui_min = -1.0f; ui_max = 1.0f;
     ui_label = "Vignette Offset";
@@ -41,7 +48,11 @@ float4 PS_Vignette(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TAR
     float4 col = tex2D(Common::AcerolaBuffer, uv).rgba;
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
-    float2 d = abs(uv - (float2(0.5f, 0.5f) + _VignetteOffset)) * _Intensity;
+    float2 pos = uv - 0.5f;
+    pos *= _VignetteSize;
+    pos += 0.5f;
+
+    float2 d = abs(pos - (float2(0.5f, 0.5f) + _VignetteOffset)) * _Intensity;
     d = pow(saturate(d), _Roundness);
     float vfactor = pow(saturate(1.0f - dot(d, d)), _Smoothness);
 

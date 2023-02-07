@@ -1,22 +1,5 @@
 #include "Includes/AcerolaFX_Blend.fxh"
 
-uniform uint _Blends <
-    ui_type = "combo";
-    ui_label = "Blend Count";
-    ui_tooltip = "Number of blend layers you would like.";
-    ui_items = "1\0"
-               "2\0"
-               "3\0"
-               "4\0"
-               "5\0"
-               "6\0"
-               "7\0"
-               "8\0"
-               "9\0"
-               "10\0";
-    ui_bind = "AFX_BLEND_COUNT";
-> = 0;
-
 #ifndef AFX_BLEND_COUNT
     #define AFX_BLEND_COUNT 0
 #endif

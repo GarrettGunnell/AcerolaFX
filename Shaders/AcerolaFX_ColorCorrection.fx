@@ -1,21 +1,8 @@
 #include "Includes/AcerolaFX_ColorCorrection.fxh"
 
-uniform uint _ColorCorrects <
-    ui_type = "combo";
-    ui_label = "Color Correct Count";
-    ui_tooltip = "Number of color corrects you would like.";
-    ui_items = "1\0"
-               "2\0"
-               "3\0"
-               "4\0"
-               "5\0"
-               "6\0"
-               "7\0"
-               "8\0"
-               "9\0"
-               "10\0";
-    ui_bind = "AFX_CORRECT_COUNT";
-> = 0;
+#ifndef AFX_CORRECT_COUNT
+ #define AFX_CORRECT_COUNT 0
+#endif
 
 uniform bool _HDR <
     ui_category = "Color Correct 1 Settings";

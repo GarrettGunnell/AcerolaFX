@@ -1,22 +1,5 @@
 #include "Includes/AcerolaFX_Framing.fxh"
 
-uniform uint _Frames <
-    ui_type = "combo";
-    ui_label = "Frame Count";
-    ui_tooltip = "Number of frames you would like.";
-    ui_items = "1\0"
-               "2\0"
-               "3\0"
-               "4\0"
-               "5\0"
-               "6\0"
-               "7\0"
-               "8\0"
-               "9\0"
-               "10\0";
-    ui_bind = "AFX_FRAME_COUNT";
-> = 0;
-
 #ifndef AFX_FRAME_COUNT
     #define AFX_FRAME_COUNT 0
 #endif

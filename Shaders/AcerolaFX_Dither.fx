@@ -26,14 +26,6 @@
  #define AFX_DitherDownscaleTex AFXTemp1::AFX_RenderTex1
 #endif
 
-uniform uint _DownscaleFactor <
-    ui_min = 0; ui_max = 8;
-    ui_label = "Downscale Factor";
-    ui_type = "slider";
-    ui_tooltip = "Which exponent of 2 to downscale by.";
-    ui_bind = "AFX_DITHER_DOWNSCALE";
-> = 0;
-
 uniform float _Spread <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Spread";

@@ -1,14 +1,6 @@
 #include "Includes/AcerolaFX_Common.fxh"
 #include "Includes/AcerolaFX_TempTex1.fxh"
 
-uniform int _GrainSize <
-    ui_min = 0; ui_max = 8;
-    ui_label = "Grain Size";
-    ui_type = "slider";
-    ui_tooltip = "Adjust size of the grain.";
-    ui_bind = "AFX_NOISE_DOWNSCALE_FACTOR";
-> = 0;
-
 uniform float _Intensity <
     ui_min = 0.0f; ui_max = 2.0f;
     ui_label = "Grain Intensity";

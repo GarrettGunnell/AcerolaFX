@@ -2,14 +2,6 @@
 #include "Includes/AcerolaFX_TempTex1.fxh"
 #include "Includes/AcerolaFX_Downscales.fxh"
 
-uniform uint _DownscaleFactor <
-    ui_min = 0; ui_max = 8;
-    ui_label = "Downscale Factor";
-    ui_type = "slider";
-    ui_tooltip = "Which exponent of 2 to downscale by.";
-    ui_bind = "AFX_DOWNSCALE_FACTOR";
-> = 0;
-
 uniform bool _Point <
     ui_label = "Point Filter";
 > = false;

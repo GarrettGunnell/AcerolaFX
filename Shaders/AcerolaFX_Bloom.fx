@@ -14,14 +14,6 @@
     #define AFX_NUM_DOWNSCALES 0
 #endif
 
-uniform uint _DownscaleFactor <
-    ui_min = 1; ui_max = 8;
-    ui_label = "Downscales";
-    ui_type = "slider";
-    ui_tooltip = "How many times to downscale and accumulate bloom.";
-    ui_bind = "AFX_NUM_DOWNSCALES";
-> = 1;
-
 uniform float _Threshold <
     ui_min = 0.0f; ui_max = 10.0f;
     ui_label = "Threshold";

@@ -33,8 +33,34 @@ uniform float3 _Color4 <
 > = float3(1.0, 1.0, 1.0);
 #endif
 
-texture2D AFX_Palette1 < source = "palette1.png"; > { Width = 4; Height = 1; Format = RGBA8; }; 
-sampler2D Palette1 { Texture = AFX_Palette1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+#if AFX_PALETTE_COUNT > 4
+uniform float3 _Color5 <
+    ui_label = "Color 5";
+    ui_type = "color";
+> = float3(1.0, 1.0, 1.0);
+#endif
+
+#if AFX_PALETTE_COUNT > 5
+uniform float3 _Color6 <
+    ui_label = "Color 6";
+    ui_type = "color";
+> = float3(1.0, 1.0, 1.0);
+#endif
+
+#if AFX_PALETTE_COUNT > 6
+uniform float3 _Color7 <
+    ui_label = "Color 7";
+    ui_type = "color";
+> = float3(1.0, 1.0, 1.0);
+#endif
+
+#if AFX_PALETTE_COUNT > 7
+uniform float3 _Color8 <
+    ui_label = "Color 8";
+    ui_type = "color";
+> = float3(1.0, 1.0, 1.0);
+#endif
+
 sampler2D PaletteSwap { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(PaletteSwap, uv).rgba; }
 
@@ -66,6 +92,26 @@ float4 PS_PaletteSwap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
 #if AFX_PALETTE_COUNT > 3
         case 4:
             color = _Color4;
+        break;
+#endif
+#if AFX_PALETTE_COUNT > 4
+        case 5:
+            color = _Color5;
+        break;
+#endif
+#if AFX_PALETTE_COUNT > 5
+        case 6:
+            color = _Color6;
+        break;
+#endif
+#if AFX_PALETTE_COUNT > 6
+        case 7:
+            color = _Color7;
+        break;
+#endif
+#if AFX_PALETTE_COUNT > 7
+        case 8:
+            color = _Color8;
         break;
 #endif
         default:

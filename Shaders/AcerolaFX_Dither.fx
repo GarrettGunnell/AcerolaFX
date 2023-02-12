@@ -34,6 +34,33 @@ uniform uint _NoiseMode <
                "Blue\0";
 > = 0;
 
+uniform int _BlueNoiseTexture <
+    ui_min = 0; ui_max = 7;
+    ui_label = "Blue Noise Texture";
+    ui_type = "slider";
+    ui_tooltip = "Adjusts allowed number of red colors.";
+> = 0;
+
+uniform bool _AnimateBlueNoise <
+    ui_label = "Animate Blue Noise";
+    ui_tooltip = "Pick random texture every frame.";
+> = false;
+uniform float timer < source = "timer"; >;
+
+uniform float _AnimationSpeed <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Animation Speed";
+    ui_type = "drag";
+    ui_tooltip = "Control how fast the animation is.";
+> = 1.0f;
+
+uniform int _BayerLevel <
+    ui_min = 0; ui_max = 2;
+    ui_label = "Bayer Level";
+    ui_type = "slider";
+    ui_tooltip = "Choose which bayer level to dither with.";
+> = 1;
+
 uniform float _Spread <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Spread";
@@ -61,13 +88,6 @@ uniform int _BlueColorCount <
     ui_type = "slider";
     ui_tooltip = "Adjusts allowed number of blue colors.";
 > = 2;
-
-uniform int _BayerLevel <
-    ui_min = 0; ui_max = 2;
-    ui_label = "Bayer Level";
-    ui_type = "slider";
-    ui_tooltip = "Choose which bayer level to dither with.";
-> = 1;
 
 uniform bool _MaskUI <
     ui_label = "Mask UI";
@@ -110,9 +130,39 @@ float GetBayer8(int x, int y) {
 }
 
 
-texture2D AFX_BlueNoiseTex1 < source = "bluenoise1.png"; > { Width = 512; Height = 512; Format = R8; }; 
+texture2D AFX_BlueNoiseTex1 < source = "bluenoise1.png"; > { Width = 256; Height = 256; Format = R8; }; 
 sampler2D BlueNoise1 { Texture = AFX_BlueNoiseTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_BlueNoiseTex2 < source = "bluenoise2.png"; > { Width = 256; Height = 256; Format = R8; }; 
+sampler2D BlueNoise2 { Texture = AFX_BlueNoiseTex2; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_BlueNoiseTex3 < source = "bluenoise3.png"; > { Width = 256; Height = 256; Format = R8; }; 
+sampler2D BlueNoise3 { Texture = AFX_BlueNoiseTex3; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_BlueNoiseTex4 < source = "bluenoise4.png"; > { Width = 256; Height = 256; Format = R8; }; 
+sampler2D BlueNoise4 { Texture = AFX_BlueNoiseTex4; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_BlueNoiseTex5 < source = "bluenoise5.png"; > { Width = 256; Height = 256; Format = R8; }; 
+sampler2D BlueNoise5 { Texture = AFX_BlueNoiseTex5; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_BlueNoiseTex6 < source = "bluenoise6.png"; > { Width = 256; Height = 256; Format = R8; }; 
+sampler2D BlueNoise6 { Texture = AFX_BlueNoiseTex6; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_BlueNoiseTex7 < source = "bluenoise7.png"; > { Width = 256; Height = 256; Format = R8; }; 
+sampler2D BlueNoise7 { Texture = AFX_BlueNoiseTex7; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
+texture2D AFX_BlueNoiseTex8 < source = "bluenoise8.png"; > { Width = 256; Height = 256; Format = R8; }; 
+sampler2D BlueNoise8 { Texture = AFX_BlueNoiseTex8; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
+
+
 sampler2D Dither { Texture = AFX_DitherDownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+
+float GetBlueNoise(int textureID, float2 uv) {
+    if (textureID == 0) return tex2D(BlueNoise1, uv).r;
+    if (textureID == 1) return tex2D(BlueNoise2, uv).r;
+    if (textureID == 2) return tex2D(BlueNoise3, uv).r;
+    if (textureID == 3) return tex2D(BlueNoise4, uv).r;
+    if (textureID == 4) return tex2D(BlueNoise5, uv).r;
+    if (textureID == 5) return tex2D(BlueNoise6, uv).r;
+    if (textureID == 6) return tex2D(BlueNoise7, uv).r;
+    if (textureID == 7) return tex2D(BlueNoise8, uv).r;
+
+    return 0.0f;
+}
+
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float4 UI = tex2D(ReShade::BackBuffer, uv);
@@ -136,9 +186,11 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
     bayerValues[2] = GetBayer8(x, y);
 
     float noise = 0;
+
+    int animatedIndex = floor(timer / (1000 * (1.00001f - _AnimationSpeed))) % 7;
     
     if (_NoiseMode == 0) noise = bayerValues[_BayerLevel];
-    else if (_NoiseMode == 1) noise = tex2D(BlueNoise1, position.xy / (512 * pow(2, AFX_DITHER_DOWNSCALE))).r;
+    else if (_NoiseMode == 1) noise = GetBlueNoise(_AnimateBlueNoise ? animatedIndex : _BlueNoiseTexture, position.xy / (256 * pow(2, AFX_DITHER_DOWNSCALE)));
 
     float4 output = saturate(col) + _Spread * noise;
 

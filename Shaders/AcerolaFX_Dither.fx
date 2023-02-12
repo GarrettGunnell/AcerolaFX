@@ -50,7 +50,7 @@ uniform int _BlueNoiseTexture <
 
 uniform bool _AnimateNoise <
     ui_spacing = 5.0f;
-    ui_label = "Animate Blue Noise";
+    ui_label = "Animate Noise";
     ui_tooltip = "Pick random texture every frame.";
 > = false;
 uniform float timer < source = "timer"; >;

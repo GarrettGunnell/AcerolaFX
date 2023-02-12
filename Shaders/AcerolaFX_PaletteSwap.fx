@@ -9,49 +9,49 @@
 uniform float3 _Color1 <
     ui_label = "Color 1";
     ui_type = "color";
-> = float3(1.0, 1.0, 1.0);
+> = float3(0.0, 0.0, 0.0);
 #endif
 
 #if AFX_PALETTE_COUNT > 1
 uniform float3 _Color2 <
     ui_label = "Color 2";
     ui_type = "color";
-> = float3(1.0, 1.0, 1.0);
+> = float3(0.1, 0.1, 0.1);
 #endif
 
 #if AFX_PALETTE_COUNT > 2
 uniform float3 _Color3 <
     ui_label = "Color 3";
     ui_type = "color";
-> = float3(1.0, 1.0, 1.0);
+> = float3(0.2, 0.2, 0.2);
 #endif
 
 #if AFX_PALETTE_COUNT > 3
 uniform float3 _Color4 <
     ui_label = "Color 4";
     ui_type = "color";
-> = float3(1.0, 1.0, 1.0);
+> = float3(0.3, 0.3, 0.3);
 #endif
 
 #if AFX_PALETTE_COUNT > 4
 uniform float3 _Color5 <
     ui_label = "Color 5";
     ui_type = "color";
-> = float3(1.0, 1.0, 1.0);
+> = float3(0.4, 0.4, 0.4);
 #endif
 
 #if AFX_PALETTE_COUNT > 5
 uniform float3 _Color6 <
     ui_label = "Color 6";
     ui_type = "color";
-> = float3(1.0, 1.0, 1.0);
+> = float3(0.6, 0.6, 0.6);
 #endif
 
 #if AFX_PALETTE_COUNT > 6
 uniform float3 _Color7 <
     ui_label = "Color 7";
     ui_type = "color";
-> = float3(1.0, 1.0, 1.0);
+> = float3(0.8, 0.8, 0.8);
 #endif
 
 #if AFX_PALETTE_COUNT > 7

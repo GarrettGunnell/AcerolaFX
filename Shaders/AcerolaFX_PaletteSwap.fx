@@ -121,7 +121,7 @@ float4 PS_PaletteSwap(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
     return float4(color, 1.0f);
 }
 
-technique AFX_PaletteSwap < ui_label = "PaletteSwap"; ui_tooltip = "."; > {
+technique AFX_PaletteSwap < ui_label = "Palette Swap"; ui_tooltip = "Swap grayscale colors with other colors."; > {
     pass {
         RenderTarget = AFXTemp1::AFX_RenderTex1;
 

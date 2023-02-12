@@ -26,6 +26,14 @@
  #define AFX_DitherDownscaleTex AFXTemp1::AFX_RenderTex1
 #endif
 
+uniform uint _NoiseMode <
+    ui_type = "combo";
+    ui_label = "Noise Mode";
+    ui_tooltip = "What noise to offset with";
+    ui_items = "Bayer\0"
+               "Blue\0";
+> = 0;
+
 uniform float _Spread <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Spread";
@@ -102,6 +110,8 @@ float GetBayer8(int x, int y) {
 }
 
 
+texture2D AFX_BlueNoiseTex1 < source = "bluenoise1.png"; > { Width = 512; Height = 512; Format = R8; }; 
+sampler2D BlueNoise1 { Texture = AFX_BlueNoiseTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; AddressU = REPEAT; AddressV = REPEAT; };
 sampler2D Dither { Texture = AFX_DitherDownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Common::AcerolaBuffer, uv);
@@ -125,7 +135,12 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
     bayerValues[1] = GetBayer4(x, y);
     bayerValues[2] = GetBayer8(x, y);
 
-    float4 output = saturate(col) + _Spread * bayerValues[_BayerLevel];
+    float noise = 0;
+    
+    if (_NoiseMode == 0) noise = bayerValues[_BayerLevel];
+    else if (_NoiseMode == 1) noise = tex2D(BlueNoise1, position.xy / (512 * pow(2, AFX_DITHER_DOWNSCALE))).r;
+
+    float4 output = saturate(col) + _Spread * noise;
 
     output.r = floor((_RedColorCount - 1.0f) * output.r + 0.5) / (_RedColorCount - 1.0f);
     output.g = floor((_GreenColorCount - 1.0f) * output.g + 0.5) / (_GreenColorCount - 1.0f);

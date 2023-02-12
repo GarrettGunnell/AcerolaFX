@@ -21,13 +21,13 @@ uniform float _Severity <
 sampler2D ColorBlindness { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ColorBlindness, uv).rgba; }
 
-float3x3 GetColorBlindnessMatrix(int index) {
+float3x3 GetColorBlindnessMatrix(int i) {
     if (_ColorBlindMode == 0)
-        return deuteranomalySeverities[index];
+        return deuteranomalySeverities[i];
     else if (_ColorBlindMode == 1)
-        return protanomalySeverities[index];
+        return protanomalySeverities[i];
 
-    return protanomalySeverities[index];
+    return tritanomalySeverities[i];
 }
 
 float4 PS_ColorBlindness(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

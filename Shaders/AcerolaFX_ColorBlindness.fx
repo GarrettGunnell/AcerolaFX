@@ -2,6 +2,15 @@
 #include "Includes/AcerolaFX_TempTex1.fxh"
 #include "Includes/AcerolaFX_ColorBlindness.fxh"
 
+uniform uint _ColorBlindMode <
+    ui_type = "combo";
+    ui_label = "Color Blind Mode";
+    ui_tooltip = "What color blindness to simulate.";
+    ui_items = "Deuteranopia (Red-Green)\0"
+               "Protanopia (Red-Green)\0"
+               "Tritanopia (Blue-Yellow)\0";
+> = 0;
+
 uniform float _Severity <
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Severity";
@@ -12,6 +21,15 @@ uniform float _Severity <
 sampler2D ColorBlindness { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ColorBlindness, uv).rgba; }
 
+float3x3 GetColorBlindnessMatrix(int index) {
+    if (_ColorBlindMode == 0)
+        return deuteranomalySeverities[index];
+    else if (_ColorBlindMode == 1)
+        return protanomalySeverities[index];
+
+    return protanomalySeverities[index];
+}
+
 float4 PS_ColorBlindness(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float4 col = saturate(tex2D(Common::AcerolaBuffer, uv));
 
@@ -19,8 +37,8 @@ float4 PS_ColorBlindness(float4 position : SV_POSITION, float2 uv : TEXCOORD) : 
     int p2 = min(10, floor((_Severity + 0.1f) * 10.0f));
     float weight = frac(_Severity * 10.0f);
 
-    float3x3 matrix1 = protanomalySeverities[p1];
-    float3x3 matrix2 = protanomalySeverities[p2];
+    float3x3 matrix1 = GetColorBlindnessMatrix(p1);
+    float3x3 matrix2 = GetColorBlindnessMatrix(p2);
 
     float3 newCB1 = lerp(matrix1[0], matrix2[0], weight);
     float3 newCB2 = lerp(matrix1[1], matrix2[1], weight);

@@ -34,6 +34,13 @@ uniform uint _NoiseMode <
                "Blue\0";
 > = 0;
 
+uniform int _BayerLevel <
+    ui_min = 0; ui_max = 2;
+    ui_label = "Bayer Level";
+    ui_type = "slider";
+    ui_tooltip = "Choose which bayer level to dither with.";
+> = 1;
+
 uniform int _BlueNoiseTexture <
     ui_min = 0; ui_max = 7;
     ui_label = "Blue Noise Texture";
@@ -41,7 +48,8 @@ uniform int _BlueNoiseTexture <
     ui_tooltip = "Adjusts allowed number of red colors.";
 > = 0;
 
-uniform bool _AnimateBlueNoise <
+uniform bool _AnimateNoise <
+    ui_spacing = 5.0f;
     ui_label = "Animate Blue Noise";
     ui_tooltip = "Pick random texture every frame.";
 > = false;
@@ -54,14 +62,8 @@ uniform float _AnimationSpeed <
     ui_tooltip = "Control how fast the animation is.";
 > = 1.0f;
 
-uniform int _BayerLevel <
-    ui_min = 0; ui_max = 2;
-    ui_label = "Bayer Level";
-    ui_type = "slider";
-    ui_tooltip = "Choose which bayer level to dither with.";
-> = 1;
-
 uniform float _Spread <
+    ui_spacing = 5.0f;
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Spread";
     ui_type = "drag";
@@ -187,10 +189,11 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
 
     float noise = 0;
 
-    int animatedIndex = floor(timer / (1000 * (1.00001f - _AnimationSpeed))) % 7;
+    int animatedBayerIndex = floor(timer / (1000 * (1.00001f - _AnimationSpeed))) % 3;
+    int animatedBlueIndex = floor(timer / (1000 * (1.00001f - _AnimationSpeed))) % 7;
     
-    if (_NoiseMode == 0) noise = bayerValues[_BayerLevel];
-    else if (_NoiseMode == 1) noise = GetBlueNoise(_AnimateBlueNoise ? animatedIndex : _BlueNoiseTexture, position.xy / (256 * pow(2, AFX_DITHER_DOWNSCALE)));
+    if (_NoiseMode == 0) noise = bayerValues[_AnimateNoise ? animatedBayerIndex : _BayerLevel];
+    else if (_NoiseMode == 1) noise = GetBlueNoise(_AnimateNoise ? animatedBlueIndex : _BlueNoiseTexture, position.xy / (256 * pow(2, AFX_DITHER_DOWNSCALE)));
 
     float4 output = saturate(col) + _Spread * noise;
 

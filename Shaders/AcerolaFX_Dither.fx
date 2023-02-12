@@ -189,8 +189,8 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
 
     float noise = 0;
 
-    int animatedBayerIndex = floor(timer / (1000 * (1.00001f - _AnimationSpeed))) % 3;
-    int animatedBlueIndex = floor(timer / (1000 * (1.00001f - _AnimationSpeed))) % 7;
+    int animatedBayerIndex = floor(timer / (1000 * (1.001f - _AnimationSpeed))) % 3;
+    int animatedBlueIndex = floor(timer / (1000 * (1.001f - _AnimationSpeed))) % 7;
     
     if (_NoiseMode == 0) noise = bayerValues[_AnimateNoise ? animatedBayerIndex : _BayerLevel];
     else if (_NoiseMode == 1) noise = GetBlueNoise(_AnimateNoise ? animatedBlueIndex : _BlueNoiseTexture, position.xy / (256 * pow(2, AFX_DITHER_DOWNSCALE)));

@@ -51,7 +51,7 @@ float4 PS_ColorBlindness(float4 position : SV_POSITION, float2 uv : TEXCOORD) : 
     return float4(cb, 1.0f);
 }
 
-technique AFX_ColorBlindness < ui_label = "ColorBlindness"; ui_tooltip = "(SDR) Simulate color blindness."; > {
+technique AFX_ColorBlindness < ui_label = "Color Blindness"; ui_tooltip = "(SDR) Simulate color blindness."; > {
     pass {
         RenderTarget = AFXTemp1::AFX_RenderTex1;
 

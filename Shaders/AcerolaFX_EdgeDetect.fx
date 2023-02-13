@@ -14,10 +14,13 @@ uniform float _Alpha <
     ui_tooltip = "Adjust edge transparency.";
 > = 1.0f;
 
-uniform bool _UseDepth <
-    ui_label = "Use Depth";
-    ui_tooltip = "Use depth values to determine edges.";
-> = true;
+uniform int _EdgeMode <
+    ui_spacing = 5.0f;
+    ui_type = "combo";
+    ui_label = "Edge Mode";
+    ui_items = "Depth\0"
+                "Depth and Normals\0";
+> = 1;
 
 uniform float _DepthThreshold <
     ui_min = 0.0f; ui_max = 5.0f;
@@ -26,17 +29,12 @@ uniform float _DepthThreshold <
     ui_tooltip = "Adjust the threshold for depth differences to count as an edge.";
 > = 0.1f;
 
-uniform bool _UseNormals <
-    ui_label = "Use Normals";
-    ui_tooltip = "Use normals to determine edges.";
-> = true;
-
 uniform float _NormalThreshold <
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Normal Threshold";
     ui_type = "drag";
     ui_tooltip = "Adjust the threshold for normal differences to count as an edge.";
-> = 1.0f;
+> = 3.0f;
 
 uniform int _DepthCutoff <
     ui_min = 0; ui_max = 1000;
@@ -111,22 +109,20 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     float output = 0.0f;
 
     float depthSum = 0.0f;
-    if (_UseDepth) {
-        depthSum += abs(w.w - c.w);
-        depthSum += abs(e.w - c.w);
-        depthSum += abs(n.w - c.w);
-        depthSum += abs(s.w - c.w);
-        depthSum += abs(nw.w - c.w);
-        depthSum += abs(sw.w - c.w);
-        depthSum += abs(ne.w - c.w);
-        depthSum += abs(se.w - c.w);
+    depthSum += abs(w.w - c.w);
+    depthSum += abs(e.w - c.w);
+    depthSum += abs(n.w - c.w);
+    depthSum += abs(s.w - c.w);
+    depthSum += abs(nw.w - c.w);
+    depthSum += abs(sw.w - c.w);
+    depthSum += abs(ne.w - c.w);
+    depthSum += abs(se.w - c.w);
 
-        if (depthSum > _DepthThreshold)
-            output = 1.0f;
-    }
+    if (depthSum > _DepthThreshold)
+        output = 1.0f;
 
     float3 normalSum = 0.0f;
-    if (_UseNormals) {
+    if (_EdgeMode == 1) {
         normalSum += abs(w.rgb - c.rgb);
         normalSum += abs(e.rgb - c.rgb);
         normalSum += abs(n.rgb - c.rgb);

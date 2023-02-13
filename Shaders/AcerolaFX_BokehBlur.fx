@@ -74,7 +74,7 @@ uniform float _LuminanceBias <
     ui_label = "Luminance Bias";
     ui_type = "slider";
     ui_tooltip = "Adjust luminance bias for inverse karis weight.";
-> = 1.0f;
+> = 0.0f;
 
 uniform int _KernelShape <
     ui_category = "Bokeh Settings";

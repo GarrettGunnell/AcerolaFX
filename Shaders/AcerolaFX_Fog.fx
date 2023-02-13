@@ -30,6 +30,7 @@ uniform float _Offset <
 > = 0.0f;
 
 uniform float _ZProjection <
+    ui_category_closed = true;
     ui_category = "Advanced settings";
     ui_min = 0.0f; ui_max = 5000.0f;
     ui_label = "Camera Z Projection";

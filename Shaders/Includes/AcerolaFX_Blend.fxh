@@ -58,9 +58,26 @@ uniform int AFX_BLEND_MODE < \
                "Color Burn\0" \
                "Vivid Light\0" \
                "Acerola Light\0"; \
-> = 0; \
+> = 1; \
+\
+uniform float AFX_BLEND_STRENGTH < \
+    ui_category = AFX_VARIABLE_CATEGORY; \
+    ui_category_closed = true; \
+    ui_min = 0.0f; ui_max = 1.0f; \
+    ui_label = "Blend Strength"; \
+    ui_type = "slider"; \
+    ui_tooltip = "Adjust how strong the blending is."; \
+> = 0.5f; \
+\
+uniform bool AFX_BLEND_SAMPLE_SKY < \
+    ui_category = AFX_VARIABLE_CATEGORY; \
+    ui_category_closed = true; \
+    ui_label = "Blend Sky"; \
+    ui_tooltip = "Include sky in blend."; \
+> = true; \
 \
 uniform float3 AFX_BLEND_COLOR < \
+    ui_spacing = 5.0f; \
     ui_category = AFX_VARIABLE_CATEGORY; \
     ui_category_closed = true; \
     ui_min = 0.0f; ui_max = 1.0f; \
@@ -77,6 +94,7 @@ uniform bool AFX_COLOR_BLEND < \
 > = false; \
  \
 uniform int AFX_BLEND_TEXTURE < \
+    ui_spacing = 5.0f; \
     ui_category = AFX_VARIABLE_CATEGORY; \
     ui_category_closed = true; \
     ui_type = "combo"; \
@@ -85,14 +103,7 @@ uniform int AFX_BLEND_TEXTURE < \
                "Watercolor\0" \
                "Custom Texture\0"; \
 > = 1; \
- \
-uniform bool AFX_TEXTURE_BLEND < \
-    ui_category = AFX_VARIABLE_CATEGORY; \
-    ui_category_closed = true; \
-    ui_label = "Use Texture"; \
-    ui_tooltip = "Use the texture to blend on to."; \
-> = false; \
- \
+\
 uniform float AFX_TEXTURE_RES < \
     ui_category = AFX_VARIABLE_CATEGORY; \
     ui_category_closed = true; \
@@ -101,23 +112,14 @@ uniform float AFX_TEXTURE_RES < \
     ui_type = "drag"; \
     ui_tooltip = "Scaling of the blended texture."; \
 > = 1.0f; \
- \
-uniform float AFX_BLEND_STRENGTH < \
+\
+uniform bool AFX_TEXTURE_BLEND < \
     ui_category = AFX_VARIABLE_CATEGORY; \
     ui_category_closed = true; \
-    ui_min = 0.0f; ui_max = 1.0f; \
-    ui_label = "Blend Strength"; \
-    ui_type = "slider"; \
-    ui_tooltip = "Adjust how strong the blending is."; \
-> = 0.0f; \
- \
-uniform bool AFX_BLEND_SAMPLE_SKY < \
-    ui_category = AFX_VARIABLE_CATEGORY; \
-    ui_category_closed = true; \
-    ui_label = "Blend Sky"; \
-    ui_tooltip = "Include sky in blend."; \
-> = true; \
- \
+    ui_label = "Use Texture"; \
+    ui_tooltip = "Use the texture to blend on to."; \
+> = false; \
+\
 float4 AFX_SHADER_NAME(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { \
     float4 col = tex2D(Common::AcerolaBuffer, uv); \
     float3 a = saturate(col.rgb); \

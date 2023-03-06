@@ -1,6 +1,14 @@
 #include "Includes/AcerolaFX_Common.fxh"
 #include "Includes/AcerolaFX_TempTex1.fxh"
 
+#ifndef AFX_DEBUG_MASK
+ #define AFX_DEBUG_MASK 0
+#endif
+
+#ifndef AFX_DEBUG_SPANS
+ #define AFX_DEBUG_SPANS 0
+#endif
+
 #ifndef AFX_HORIZONTAL_SORT
  #define AFX_HORIZONTAL_SORT 0
 #endif
@@ -75,6 +83,7 @@ storage2D s_SpanLengths { Texture = AFX_SpanLengthsTex; };
 
 sampler2D PixelSort { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(PixelSort, uv).rgba; }
+float4 PS_DebugMask(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(Mask, uv).r; }
 
 float hash(uint n) {
     // integer hash copied from Hugo Elias
@@ -199,6 +208,14 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
         DispatchSizeY = BUFFER_HEIGHT / 8;
     }
 
+#if AFX_DEBUG_MASK != 0
+    pass {
+        RenderTarget = Common::AcerolaBufferTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_DebugMask;
+    }
+#else
     pass {
         ComputeShader = CS_CreateSortValues<8, 8>;
         DispatchSizeX = BUFFER_WIDTH / 8;
@@ -222,11 +239,13 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
 #endif
     }
 
+#if AFX_DEBUG_SPANS != 0
     pass {
         ComputeShader = CS_VisualizeSpans<1, 1>;
         DispatchSizeX = BUFFER_WIDTH;
         DispatchSizeY = BUFFER_HEIGHT;
     }
+#endif
 
     pass EndPass {
         RenderTarget = Common::AcerolaBufferTex;
@@ -234,4 +253,5 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
         VertexShader = PostProcessVS;
         PixelShader = PS_EndPass;
     }
+#endif
 }

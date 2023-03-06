@@ -39,6 +39,26 @@ uniform float _MaskRandomOffset <
     ui_tooltip = "Adjust the random offset of each segment to reduce uniformity.";
 > = 0.0f;
 
+
+uniform int _SpanLimit <
+    ui_category_closed = true;
+    ui_category = "Span Settings";
+    ui_min = 0; 
+    ui_max = 256;
+    ui_label = "Length Limit";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the max length of sorted spans. This will heavily impact performance.";
+> = 64;
+
+uniform int _MaxRandomOffset <
+    ui_category_closed = true;
+    ui_category = "Span Settings";
+    ui_min = 0; ui_max = 64;
+    ui_label = "Random Offset";
+    ui_type = "slider";
+    ui_tooltip = "Adjust the random length offset of limited spans to reduce uniformity.";
+> = 0;
+
 //uniform float _FrameTime < source = "frametime"; >;
 
 texture2D AFX_PixelSortMaskTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
@@ -48,6 +68,10 @@ storage2D s_Mask { Texture = AFX_PixelSortMaskTex; };
 texture2D AFX_SortValueTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
 sampler2D SortValue { Texture = AFX_SortValueTex; };
 storage2D s_SortValue { Texture = AFX_SortValueTex; };
+
+texture2D AFX_SpanLengthsTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; }; 
+sampler2D SpanLengths { Texture = AFX_SpanLengthsTex; };
+storage2D s_SpanLengths { Texture = AFX_SpanLengthsTex; };
 
 sampler2D PixelSort { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(PixelSort, uv).rgba; }
@@ -62,21 +86,21 @@ float hash(uint n) {
 void CS_CreateMask(uint3 id : SV_DISPATCHTHREADID) {
     float2 pixelSize = float2(BUFFER_RCP_HEIGHT, BUFFER_RCP_WIDTH);
 
-    #if AFX_HORIZONTAL_SORT == 0
+#if AFX_HORIZONTAL_SORT == 0
     uint seed = id.x * BUFFER_WIDTH;
-    #else
+#else
     uint seed = id.y * BUFFER_HEIGHT;
-    #endif
+#endif
 
     float rand = hash(seed) * _MaskRandomOffset;
 
     float2 uv = id.xy / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
-    #if AFX_HORIZONTAL_SORT == 0
+#if AFX_HORIZONTAL_SORT == 0
     uv.y += rand;
-    #else
+#else
     uv.x += rand;
-    #endif
+#endif
 
     float4 col = saturate(tex2Dlod(Common::AcerolaBuffer, float4(uv, 0, 0)));
 
@@ -95,6 +119,59 @@ void CS_CreateSortValues(uint3 id : SV_DISPATCHTHREADID) {
     tex2Dstore(s_SortValue, id.xy, Common::RGBtoHSL(col.rgb).b);
 }
 
+void CS_ClearSpans(uint3 id : SV_DISPATCHTHREADID) {
+    tex2Dstore(s_SpanLengths, id.xy, 0);
+}
+
+void CS_IdentifySpans(uint3 id : SV_DISPATCHTHREADID) {
+    uint seed = id.x + BUFFER_WIDTH * id.y + BUFFER_WIDTH * BUFFER_HEIGHT;
+    uint2 idx = 0;
+    uint pos = 0;
+    uint spanStartIndex = 0;
+    uint spanLength = 0;
+
+#if AFX_HORIZONTAL_SORT == 0
+    uint screenLimit = BUFFER_HEIGHT;
+#else
+    uint screenLimit = BUFFER_WIDTH;
+#endif
+
+    uint spanLimit = _SpanLimit - (hash(seed) * _MaxRandomOffset);
+
+    while (pos < screenLimit) {
+#if AFX_HORIZONTAL_SORT == 0
+        idx = uint2(id.x, pos);
+#else
+        idx = uint2(pos, id.y);
+#endif
+
+        int mask = tex2Dfetch(Mask, idx).r;
+        pos++;
+
+        if (mask == 0 || spanLength >= spanLimit) {
+#if AFX_HORIZONTAL_SORT == 0
+            idx = uint2(id.x, spanStartIndex);
+#else
+            idx = uint2(spanStartIndex, id.y);
+#endif
+            tex2Dstore(s_SpanLengths, idx, mask == 1 ? spanLength + 1 : spanLength);
+            spanStartIndex = pos;
+            spanLength = 0;
+        } else {
+            spanLength++;
+        }
+    }
+
+    if (spanLength != 0) {
+#if AFX_HORIZONTAL_SORT == 0
+        idx = uint2(id.x, spanStartIndex);
+#else
+        idx = uint2(spanStartIndex, id.y);
+#endif
+        tex2Dstore(s_SpanLengths, idx, spanLength);
+    }
+}
+
 technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH PERFORMANCE COST) Sort the game pixels."; > {
     pass {
         ComputeShader = CS_CreateMask<8, 8>;
@@ -106,6 +183,23 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
         ComputeShader = CS_CreateSortValues<8, 8>;
         DispatchSizeX = BUFFER_WIDTH / 8;
         DispatchSizeY = BUFFER_HEIGHT / 8;
+    }
+    
+    pass {
+        ComputeShader = CS_ClearSpans<8, 8>;
+        DispatchSizeX = BUFFER_WIDTH / 8;
+        DispatchSizeY = BUFFER_HEIGHT / 8;
+    }
+
+    pass {
+        ComputeShader = CS_IdentifySpans<1, 1>;
+#if AFX_HORIZONTAL_SORT == 0
+        DispatchSizeX = BUFFER_WIDTH;
+        DispatchSizeY = 1;
+#else
+        DispatchSizeX = 1;
+        DispatchSizeY = BUFFER_HEIGHT;
+#endif
     }
 
     pass EndPass {

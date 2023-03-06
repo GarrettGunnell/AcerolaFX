@@ -201,6 +201,53 @@ void CS_VisualizeSpans(uint3 id : SV_DISPATCHTHREADID) {
     }
 }
 
+
+groupshared float gs_PixelSortCache[256];
+
+void CS_PixelSort(uint3 id : SV_DISPATCHTHREADID) {
+    const int spanLength = tex2Dfetch(SpanLengths, id.xy).r;
+
+    if (spanLength >= 1) {
+        uint2 idx;
+#if AFX_HORIZONTAL_SORT == 0
+        const uint2 direction = uint2(0, 1);
+#else
+        const uint2 direction = uint2(1, 0);
+#endif
+
+        for (int k = 0; k < spanLength; ++k) {
+            idx = id.xy + k * direction;
+            gs_PixelSortCache[k] = tex2Dfetch(SortValue, idx).r;
+        }
+
+        float currValue = gs_PixelSortCache[0];
+        uint minIndex = 0;
+
+        for (int i = 0; i < spanLength; ++i) {
+            for (int j = 1; j < spanLength; ++j) {
+                float v = gs_PixelSortCache[j];
+
+                if (v < currValue) {
+                    currValue = v;
+                    minIndex = j;
+                }
+            }
+
+            idx = id.xy + i * direction;
+            const uint2 colorIdx = id.xy + minIndex * direction;
+
+            bool _ReverseSorting = false;
+
+            if (_ReverseSorting)
+                idx = id.xy + (spanLength - i - 1) * direction;
+
+            tex2Dstore(AFXTemp1::s_RenderTex, idx, tex2Dfetch(Common::AcerolaBuffer, colorIdx));
+            gs_PixelSortCache[minIndex] = 100000;
+            currValue = 10000;
+        }
+    }
+}
+
 technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH PERFORMANCE COST) Sort the game pixels."; > {
     pass {
         ComputeShader = CS_CreateMask<8, 8>;
@@ -242,6 +289,12 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
 #if AFX_DEBUG_SPANS != 0
     pass {
         ComputeShader = CS_VisualizeSpans<1, 1>;
+        DispatchSizeX = BUFFER_WIDTH;
+        DispatchSizeY = BUFFER_HEIGHT;
+    }
+#else
+    pass {
+        ComputeShader = CS_PixelSort<1, 1>;
         DispatchSizeX = BUFFER_WIDTH;
         DispatchSizeY = BUFFER_HEIGHT;
     }

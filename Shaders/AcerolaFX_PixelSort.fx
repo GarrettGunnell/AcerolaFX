@@ -6,13 +6,17 @@
 #endif
 
 uniform float _LowThreshold <
+    ui_category_closed = true;
+    ui_category = "Mask Settings";
     ui_min = 0.0f; ui_max = 0.5f;
     ui_label = "Low Threshold";
     ui_type = "slider";
     ui_tooltip = "Adjust the threshold at which dark pixels are omitted from the mask.";
-> = 0.2f;
+> = 0.4f;
 
 uniform float _HighThreshold <
+    ui_category_closed = true;
+    ui_category = "Mask Settings";
     ui_min = 0.5f; ui_max = 1.0f;
     ui_label = "High Threshold";
     ui_type = "slider";
@@ -20,9 +24,22 @@ uniform float _HighThreshold <
 > = 0.72f;
 
 uniform bool _InvertMask <
+    ui_category_closed = true;
+    ui_category = "Mask Settings";
     ui_label = "Invert Mask";
     ui_tooltip = "Invert sorting mask.";
 > = false;
+
+uniform float _MaskRandomOffset <
+    ui_category_closed = true;
+    ui_category = "Mask Settings";
+    ui_min = -0.01f; ui_max = 0.01f;
+    ui_label = "Random Offset";
+    ui_type = "drag";
+    ui_tooltip = "Adjust the random offset of each segment to reduce uniformity.";
+> = 0.0f;
+
+//uniform float _FrameTime < source = "frametime"; >;
 
 sampler2D PixelSort { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(PixelSort, uv).rgba; }
@@ -43,10 +60,7 @@ void CS_CreateMask(uint3 id : SV_DispatchThreadID) {
     uint seed = id.y * BUFFER_HEIGHT;
     #endif
 
-    float _FrameTime = 0;
-    float _AnimationSpeed = 0;
-    float _MaskRandomOffset = 0;
-    float rand = hash(seed + (_FrameTime * _AnimationSpeed)) * _MaskRandomOffset;
+    float rand = hash(seed) * _MaskRandomOffset;
 
     float2 uv = id.xy / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 

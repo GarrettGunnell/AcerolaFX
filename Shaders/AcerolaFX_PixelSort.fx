@@ -248,6 +248,12 @@ void CS_PixelSort(uint3 id : SV_DISPATCHTHREADID) {
     }
 }
 
+void CS_Composite(uint3 id : SV_DISPATCHTHREADID) {
+    if (tex2Dfetch(Mask, id.xy).r == 0) {
+        tex2Dstore(AFXTemp1::s_RenderTex, id.xy, tex2Dfetch(Common::AcerolaBuffer, id.xy));
+    }
+}
+
 technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH PERFORMANCE COST) Sort the game pixels."; > {
     pass {
         ComputeShader = CS_CreateMask<8, 8>;
@@ -297,6 +303,12 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
         ComputeShader = CS_PixelSort<1, 1>;
         DispatchSizeX = BUFFER_WIDTH;
         DispatchSizeY = BUFFER_HEIGHT;
+    }
+
+    pass {
+        ComputeShader = CS_Composite<8, 8>;
+        DispatchSizeX = BUFFER_WIDTH / 8;
+        DispatchSizeY = BUFFER_HEIGHT / 8;
     }
 #endif
 

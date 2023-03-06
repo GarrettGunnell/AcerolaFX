@@ -78,6 +78,12 @@ uniform int _SortBy <
                "Hue\0";
 > = 0;
 
+uniform bool _ReverseSorting <
+    ui_category_closed = true;
+    ui_category = "Sort Settings";
+    ui_label = "Reverse Sorting";
+> = false;
+
 texture2D AFX_PixelSortMaskTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
 sampler2D Mask { Texture = AFX_PixelSortMaskTex; };
 storage2D s_Mask { Texture = AFX_PixelSortMaskTex; };
@@ -255,9 +261,7 @@ void CS_PixelSort(uint3 id : SV_DISPATCHTHREADID) {
 
             idx = id.xy + i * direction;
             const uint2 colorIdx = id.xy + minIndex * direction;
-
-            bool _ReverseSorting = false;
-
+            
             if (_ReverseSorting)
                 idx = id.xy + (spanLength - i - 1) * direction;
 

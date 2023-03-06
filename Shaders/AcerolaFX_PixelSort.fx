@@ -45,6 +45,10 @@ texture2D AFX_PixelSortMaskTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; F
 sampler2D Mask { Texture = AFX_PixelSortMaskTex; };
 storage2D s_Mask { Texture = AFX_PixelSortMaskTex; };
 
+texture2D AFX_SortValueTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
+sampler2D SortValue { Texture = AFX_SortValueTex; };
+storage2D s_SortValue { Texture = AFX_SortValueTex; };
+
 sampler2D PixelSort { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(PixelSort, uv).rgba; }
 
@@ -55,7 +59,7 @@ float hash(uint n) {
     return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
 }
 
-void CS_CreateMask(uint3 id : SV_DispatchThreadID) {
+void CS_CreateMask(uint3 id : SV_DISPATCHTHREADID) {
     float2 pixelSize = float2(BUFFER_RCP_HEIGHT, BUFFER_RCP_WIDTH);
 
     #if AFX_HORIZONTAL_SORT == 0
@@ -85,6 +89,11 @@ void CS_CreateMask(uint3 id : SV_DispatchThreadID) {
     tex2Dstore(s_Mask, id.xy, _InvertMask ? 1 - result : result);
 }
 
+void CS_CreateSortValues(uint3 id : SV_DISPATCHTHREADID) {
+    float4 col = tex2Dfetch(Common::AcerolaBuffer, id.xy);
+
+    tex2Dstore(s_SortValue, id.xy, Common::RGBtoHSL(col.rgb).b);
+}
 
 technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH PERFORMANCE COST) Sort the game pixels."; > {
     pass {
@@ -93,6 +102,11 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
         DispatchSizeY = BUFFER_HEIGHT / 8;
     }
 
+    pass {
+        ComputeShader = CS_CreateSortValues<8, 8>;
+        DispatchSizeX = BUFFER_WIDTH / 8;
+        DispatchSizeY = BUFFER_HEIGHT / 8;
+    }
 
     pass EndPass {
         RenderTarget = Common::AcerolaBufferTex;

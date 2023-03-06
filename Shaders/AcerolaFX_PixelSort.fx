@@ -119,8 +119,9 @@ void CS_CreateSortValues(uint3 id : SV_DISPATCHTHREADID) {
     tex2Dstore(s_SortValue, id.xy, Common::RGBtoHSL(col.rgb).b);
 }
 
-void CS_ClearSpans(uint3 id : SV_DISPATCHTHREADID) {
+void CS_ClearBuffers(uint3 id : SV_DISPATCHTHREADID) {
     tex2Dstore(s_SpanLengths, id.xy, 0);
+    tex2Dstore(AFXTemp1::s_RenderTex, id.xy, 0);
 }
 
 void CS_IdentifySpans(uint3 id : SV_DISPATCHTHREADID) {
@@ -172,6 +173,25 @@ void CS_IdentifySpans(uint3 id : SV_DISPATCHTHREADID) {
     }
 }
 
+void CS_VisualizeSpans(uint3 id : SV_DISPATCHTHREADID) {
+    int spanLength = tex2Dfetch(SpanLengths, id.xy).r;
+
+    if (spanLength >= 1) {
+        uint seed = id.x + BUFFER_WIDTH * id.y + BUFFER_WIDTH * BUFFER_HEIGHT;
+        float4 c = float4(hash(seed), hash(seed * 2), hash(seed * 3), 1.0f);
+
+        for (int i = 0; i < spanLength; ++i) {
+#if AFX_HORIZONTAL_SORT == 0
+            uint2 idx = uint2(id.x, id.y + i);
+#else
+            uint2 idx = uint2(id.x + i, id.y);
+#endif
+
+            tex2Dstore(AFXTemp1::s_RenderTex, idx, c);
+        }
+    }
+}
+
 technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH PERFORMANCE COST) Sort the game pixels."; > {
     pass {
         ComputeShader = CS_CreateMask<8, 8>;
@@ -186,7 +206,7 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
     }
     
     pass {
-        ComputeShader = CS_ClearSpans<8, 8>;
+        ComputeShader = CS_ClearBuffers<8, 8>;
         DispatchSizeX = BUFFER_WIDTH / 8;
         DispatchSizeY = BUFFER_HEIGHT / 8;
     }
@@ -200,6 +220,12 @@ technique AFX_PixelSort < ui_label = "Pixel Sort"; ui_tooltip = "(EXTREMELY HIGH
         DispatchSizeX = 1;
         DispatchSizeY = BUFFER_HEIGHT;
 #endif
+    }
+
+    pass {
+        ComputeShader = CS_VisualizeSpans<1, 1>;
+        DispatchSizeX = BUFFER_WIDTH;
+        DispatchSizeY = BUFFER_HEIGHT;
     }
 
     pass EndPass {

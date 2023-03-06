@@ -67,7 +67,16 @@ uniform int _MaxRandomOffset <
     ui_tooltip = "Adjust the random length offset of limited spans to reduce uniformity.";
 > = 0;
 
-//uniform float _FrameTime < source = "frametime"; >;
+uniform int _SortBy <
+    ui_category = "Sort Settings";
+    ui_category_closed = true;
+    ui_type = "combo";
+    ui_label = "Sort By";
+    ui_tooltip = "What color information to sort by.";
+    ui_items = "Luminance\0"
+               "Saturation\0"
+               "Hue\0";
+> = 0;
 
 texture2D AFX_PixelSortMaskTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
 sampler2D Mask { Texture = AFX_PixelSortMaskTex; };
@@ -125,7 +134,18 @@ void CS_CreateMask(uint3 id : SV_DISPATCHTHREADID) {
 void CS_CreateSortValues(uint3 id : SV_DISPATCHTHREADID) {
     float4 col = tex2Dfetch(Common::AcerolaBuffer, id.xy);
 
-    tex2Dstore(s_SortValue, id.xy, Common::RGBtoHSL(col.rgb).b);
+    float3 hsl = Common::RGBtoHSL(col.rgb);
+
+    float output = 0.0f;
+
+    if (_SortBy == 0)
+        output = hsl.b;
+    else if (_SortBy == 1)
+        output = hsl.g;
+    else
+        output = hsl.r;
+
+    tex2Dstore(s_SortValue, id.xy, output);
 }
 
 void CS_ClearBuffers(uint3 id : SV_DISPATCHTHREADID) {

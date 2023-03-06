@@ -41,6 +41,10 @@ uniform float _MaskRandomOffset <
 
 //uniform float _FrameTime < source = "frametime"; >;
 
+texture2D AFX_PixelSortMaskTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
+sampler2D Mask { Texture = AFX_PixelSortMaskTex; };
+storage2D s_Mask { Texture = AFX_PixelSortMaskTex; };
+
 sampler2D PixelSort { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(PixelSort, uv).rgba; }
 
@@ -78,7 +82,7 @@ void CS_CreateMask(uint3 id : SV_DispatchThreadID) {
     if (l < _LowThreshold || _HighThreshold < l)
         result = 0;
     
-    tex2Dstore(AFXTemp1::s_RenderTex, id.xy, _InvertMask ? 1 - result : result);
+    tex2Dstore(s_Mask, id.xy, _InvertMask ? 1 - result : result);
 }
 
 

@@ -231,7 +231,7 @@ void CS_VisualizeSpans(uint3 id : SV_DISPATCHTHREADID) {
 groupshared float gs_PixelSortCache[256];
 
 void CS_PixelSort(uint3 id : SV_DISPATCHTHREADID) {
-    const int spanLength = tex2Dfetch(SpanLengths, id.xy).r;
+    const uint spanLength = tex2Dfetch(SpanLengths, id.xy).r;
 
     if (spanLength >= 1) {
         uint2 idx;
@@ -246,28 +246,49 @@ void CS_PixelSort(uint3 id : SV_DISPATCHTHREADID) {
             gs_PixelSortCache[k] = tex2Dfetch(SortValue, idx).r;
         }
 
-        float currValue = gs_PixelSortCache[0];
+        float minValue = gs_PixelSortCache[0];
+        float maxValue = gs_PixelSortCache[0];
         uint minIndex = 0;
+        uint maxIndex = 0;
 
-        for (int i = 0; i < spanLength; ++i) {
-            for (int j = 1; j < spanLength; ++j) {
+        for (uint i = 0; i < (spanLength / 2) + 1; ++i) {
+            for (uint j = 1; j < spanLength; ++j) {
                 float v = gs_PixelSortCache[j];
 
-                if (v < currValue) {
-                    currValue = v;
-                    minIndex = j;
+                if (v == saturate(v)) {
+                    if (v < minValue) {
+                        minValue = v;
+                        minIndex = j;
+                    }
+
+                    if (maxValue < v) {
+                        maxValue = v;
+                        maxIndex = j;
+                    }
                 }
             }
 
-            idx = id.xy + i * direction;
-            const uint2 colorIdx = id.xy + minIndex * direction;
-            
-            if (_ReverseSorting)
-                idx = id.xy + (spanLength - i - 1) * direction;
+            uint2 minIdx = 0;
+            uint2 maxIdx = 0;
 
-            tex2Dstore(AFXTemp1::s_RenderTex, idx, tex2Dfetch(Common::AcerolaBuffer, colorIdx));
-            gs_PixelSortCache[minIndex] = 100000;
-            currValue = 10000;
+            if (_ReverseSorting) {
+                minIdx = id.xy + i * direction;
+                maxIdx = id.xy + (spanLength - i - 1) * direction;
+            } else {
+                minIdx = id.xy + (spanLength - i - 1) * direction;
+                maxIdx = id.xy + i * direction;
+            }
+            
+            const uint2 minColorIdx = id.xy + minIndex * direction;
+            const uint2 maxColorIdx = id.xy + maxIndex * direction;
+            
+
+            tex2Dstore(AFXTemp1::s_RenderTex, minIdx, tex2Dfetch(Common::AcerolaBuffer, minColorIdx));
+            tex2Dstore(AFXTemp1::s_RenderTex, maxIdx, tex2Dfetch(Common::AcerolaBuffer, maxColorIdx));
+            gs_PixelSortCache[minIndex] = 2;
+            gs_PixelSortCache[maxIndex] = -2;
+            minValue = 1;
+            maxValue = -1;
         }
     }
 }

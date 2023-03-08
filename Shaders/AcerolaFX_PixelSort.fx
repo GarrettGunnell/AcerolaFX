@@ -84,6 +84,15 @@ uniform bool _ReverseSorting <
     ui_label = "Reverse Sorting";
 > = false;
 
+uniform float _SortedGamma <
+    ui_category_closed = true;
+    ui_category = "Sort Settings";
+    ui_min = 0.1f; ui_max = 5.0f;
+    ui_label = "Gamma";
+    ui_type = "drag";
+    ui_tooltip = "Adjust gamma of sorted pixels to accentuate them.";
+> = 1.0f;
+
 texture2D AFX_PixelSortMaskTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
 sampler2D Mask { Texture = AFX_PixelSortMaskTex; };
 storage2D s_Mask { Texture = AFX_PixelSortMaskTex; };
@@ -283,8 +292,8 @@ void CS_PixelSort(uint3 id : SV_DISPATCHTHREADID) {
             const uint2 maxColorIdx = id.xy + maxIndex * direction;
             
 
-            tex2Dstore(AFXTemp1::s_RenderTex, minIdx, tex2Dfetch(Common::AcerolaBuffer, minColorIdx));
-            tex2Dstore(AFXTemp1::s_RenderTex, maxIdx, tex2Dfetch(Common::AcerolaBuffer, maxColorIdx));
+            tex2Dstore(AFXTemp1::s_RenderTex, minIdx, pow(tex2Dfetch(Common::AcerolaBuffer, minColorIdx), _SortedGamma));
+            tex2Dstore(AFXTemp1::s_RenderTex, maxIdx, pow(tex2Dfetch(Common::AcerolaBuffer, maxColorIdx), _SortedGamma));
             gs_PixelSortCache[minIndex] = 2;
             gs_PixelSortCache[maxIndex] = -2;
             minValue = 1;

@@ -61,11 +61,11 @@ uniform int _SpanLimit <
 uniform int _MaxRandomOffset <
     ui_category_closed = true;
     ui_category = "Span Settings";
-    ui_min = 0; ui_max = 64;
+    ui_min = 1; ui_max = 64;
     ui_label = "Random Offset";
     ui_type = "slider";
     ui_tooltip = "Adjust the random length offset of limited spans to reduce uniformity.";
-> = 0;
+> = 1;
 
 uniform int _SortBy <
     ui_category = "Sort Settings";

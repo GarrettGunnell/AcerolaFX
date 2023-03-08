@@ -47,6 +47,14 @@ uniform float _MaskRandomOffset <
     ui_tooltip = "Adjust the random offset of each segment to reduce uniformity.";
 > = 0.0f;
 
+uniform float _AnimationSpeed <
+    ui_category_closed = true;
+    ui_category = "Mask Settings";
+    ui_min = 0f; ui_max = 30f;
+    ui_label = "Random Offset";
+    ui_type = "slider";
+    ui_tooltip = "Animate the random offset.";
+> = 0.0f;
 
 uniform int _SpanLimit <
     ui_category_closed = true;
@@ -93,6 +101,8 @@ uniform float _SortedGamma <
     ui_tooltip = "Adjust gamma of sorted pixels to accentuate them.";
 > = 1.0f;
 
+uniform float _FrameTime < source = "frametime"; >;
+
 texture2D AFX_PixelSortMaskTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R8; }; 
 sampler2D Mask { Texture = AFX_PixelSortMaskTex; };
 storage2D s_Mask { Texture = AFX_PixelSortMaskTex; };
@@ -125,7 +135,7 @@ void CS_CreateMask(uint3 id : SV_DISPATCHTHREADID) {
     uint seed = id.y * BUFFER_HEIGHT;
 #endif
 
-    float rand = hash(seed) * _MaskRandomOffset;
+    float rand = hash(seed + (_FrameTime * _AnimationSpeed)) * _MaskRandomOffset;
 
     float2 uv = id.xy / float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
@@ -292,8 +302,8 @@ void CS_PixelSort(uint3 id : SV_DISPATCHTHREADID) {
             const uint2 maxColorIdx = id.xy + maxIndex * direction;
             
 
-            tex2Dstore(AFXTemp1::s_RenderTex, minIdx, pow(tex2Dfetch(Common::AcerolaBuffer, minColorIdx), _SortedGamma));
-            tex2Dstore(AFXTemp1::s_RenderTex, maxIdx, pow(tex2Dfetch(Common::AcerolaBuffer, maxColorIdx), _SortedGamma));
+            tex2Dstore(AFXTemp1::s_RenderTex, minIdx, pow(abs(tex2Dfetch(Common::AcerolaBuffer, minColorIdx)), _SortedGamma));
+            tex2Dstore(AFXTemp1::s_RenderTex, maxIdx, pow(abs(tex2Dfetch(Common::AcerolaBuffer, maxColorIdx)), _SortedGamma));
             gs_PixelSortCache[minIndex] = 2;
             gs_PixelSortCache[maxIndex] = -2;
             minValue = 1;

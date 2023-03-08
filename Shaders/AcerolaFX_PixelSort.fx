@@ -51,7 +51,7 @@ uniform float _AnimationSpeed <
     ui_category_closed = true;
     ui_category = "Mask Settings";
     ui_min = 0f; ui_max = 30f;
-    ui_label = "Random Offset";
+    ui_label = "Offset Animation Speed";
     ui_type = "slider";
     ui_tooltip = "Animate the random offset.";
 > = 0.0f;

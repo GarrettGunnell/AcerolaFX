@@ -29,6 +29,11 @@ uniform float _Offset <
     ui_tooltip = "Offset distance at which fog starts to appear.";
 > = 0.0f;
 
+uniform bool _SampleSky <
+    ui_label = "Sample Sky";
+    ui_tooltip = "Apply fog to skybox or not.";
+> = true;
+
 uniform float _ZProjection <
     ui_category_closed = true;
     ui_category = "Advanced settings";
@@ -56,6 +61,9 @@ float4 PS_DistanceFog(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_
         fogFactor = (_Density / sqrt(log(2))) * max(0.0f, viewDistance - _Offset);
         fogFactor = exp2(-fogFactor * fogFactor);
     }
+
+    if (depth > 0.99f && !_SampleSky)
+        fogFactor = 1.0f;
 
     float3 fogOutput = lerp(_FogColor, col.rgb, saturate(fogFactor));
 

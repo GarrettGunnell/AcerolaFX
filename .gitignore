@@ -1,7 +1,8 @@
 /Presets/VideoExamples.ini
 /Presets/AcerolaFX_Toon.ini
-/Presets/AcerolaFX_Shiba.ini
 /Presets/AcerolaFX_Manifold.ini
 /Presets/AcerolaFX_Inio.ini
+/Presets/AcerolaFX_Dither.ini
+/Presets/AcerolaFX_GPose.ini
 /Shaders/AcerolaFX_Firefly.fx
 offsets.py

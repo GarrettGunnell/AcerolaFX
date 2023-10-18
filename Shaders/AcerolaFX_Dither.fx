@@ -70,25 +70,30 @@ uniform float _Spread <
     ui_tooltip = "Controls how much the dither noise spreads the color value across the reduced color palette.";
 > = 0.5f;
 
+uniform uint _ColorSpace <
+    ui_type = "combo";
+    ui_label = "Color Space";
+    ui_tooltip = "What space to quantize in";
+    ui_items = "RGB\0"
+               "HSL\0";
+> = 0;
+
 uniform int _RedColorCount <
     ui_min = 2; ui_max = 16;
-    ui_label = "Red Color Count";
+    ui_label = "Channel One Count";
     ui_type = "slider";
-    ui_tooltip = "Adjusts allowed number of red colors.";
 > = 2;
 
 uniform int _GreenColorCount <
     ui_min = 2; ui_max = 16;
-    ui_label = "Green Color Count";
+    ui_label = "Channel Two Count";
     ui_type = "slider";
-    ui_tooltip = "Adjusts allowed number of green colors.";
 > = 2;
 
 uniform int _BlueColorCount <
     ui_min = 2; ui_max = 16;
-    ui_label = "Blue Color Count";
+    ui_label = "Channel Three Count";
     ui_type = "slider";
-    ui_tooltip = "Adjusts allowed number of blue colors.";
 > = 2;
 
 uniform bool _MaskUI <
@@ -165,6 +170,39 @@ float GetBlueNoise(int textureID, float2 uv) {
     return 0.0f;
 }
 
+// https://www.chilliant.com/rgb2hsv.html
+float3 RGBtoHCV(in float3 RGB) {
+    float4 P = (RGB.g < RGB.b) ? float4(RGB.bg, -1.0, 2.0/3.0) : float4(RGB.gb, 0.0, -1.0/3.0);
+    float4 Q = (RGB.r < P.x) ? float4(P.xyw, RGB.r) : float4(RGB.r, P.yzx);
+    float C = Q.x - min(Q.w, Q.y);
+    float H = abs((Q.w - Q.y) / (6 * C + 1e-10) + Q.z);
+
+    return float3(H, C, Q.x);
+}
+
+float3 RGBtoHSL(in float3 RGB) {
+    float3 HCV = RGBtoHCV(RGB);
+    float L = HCV.z - HCV.y * 0.5;
+    float S = HCV.y / (1 - abs(L * 2 - 1) + 1e-10);
+
+    return float3(HCV.x, S, L);
+}
+
+float3 HUEtoRGB(in float H) {
+    float R = abs(H * 6 - 3) - 1;
+    float G = 2 - abs(H * 6 - 2);
+    float B = 2 - abs(H * 6 - 4);
+    
+    return saturate(float3(R,G,B));
+}
+
+float3 HSLtoRGB(in float3 HSL) {
+    float3 RGB = HUEtoRGB(HSL.x);
+    float C = (1 - abs(2 * HSL.z - 1)) * HSL.y;
+
+    return (RGB - 0.5) * C + HSL.z;
+}
+
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { 
     float4 col = tex2D(Common::AcerolaBuffer, uv);
     float4 UI = tex2D(ReShade::BackBuffer, uv);
@@ -197,11 +235,20 @@ float4 PS_Dither(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGE
 
     float4 output = saturate(col) + _Spread * noise;
 
+    if (_ColorSpace == 1) {
+        output.rgb = RGBtoHSL(output.rgb - _Spread * noise) + _Spread * noise;
+    }
+
     output.r = floor((_RedColorCount - 1.0f) * output.r + 0.5) / (_RedColorCount - 1.0f);
     output.g = floor((_GreenColorCount - 1.0f) * output.g + 0.5) / (_GreenColorCount - 1.0f);
     output.b = floor((_BlueColorCount - 1.0f) * output.b + 0.5) / (_BlueColorCount - 1.0f);
 
-   return float4(lerp(output.rgb, UI.rgb, UI.a * _MaskUI), UI.a);
+    if (_ColorSpace == 1) {
+        output.gb = saturate(output.gb);
+        output.rgb = HSLtoRGB(output.rgb);
+    }
+
+   return float4(lerp(saturate(output.rgb), UI.rgb, UI.a * _MaskUI), UI.a);
 }
 
 technique AFX_Dither  <ui_label = "Dither"; ui_tooltip = "(LDR) Reduces the color palette of the image with ordered dithering."; >  {

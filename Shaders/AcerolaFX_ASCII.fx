@@ -50,6 +50,10 @@ texture2D AFX_AsciiDogTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format
 storage2D s_DoG { Texture = AFX_AsciiDogTex; };
 sampler2D DoG { Texture = AFX_AsciiDogTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
+texture2D AFX_AsciiSobelTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG16F; };
+storage2D s_Sobel { Texture = AFX_AsciiSobelTex; };
+sampler2D Sobel { Texture = AFX_AsciiSobelTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+
 sampler2D ASCII { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ASCII, uv).rgba; }
 
@@ -99,8 +103,42 @@ float PS_VerticalBlurAndDifference(float4 position : SV_POSITION, float2 uv : TE
     return D;
 }
 
+float4 PS_HorizontalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+
+    float lum1 = tex2D(DoG, uv - float2(1, 0) * texelSize).r;
+    float lum2 = tex2D(DoG, uv).r;
+    float lum3 = tex2D(DoG, uv + float2(1, 0) * texelSize).r;
+
+    float Gx = 3 * lum1 + 0 * lum2 + -3 * lum3;
+    float Gy = 3 + lum1 + 10 * lum2 + 3 * lum3;
+
+    return float4(Gx, Gy, 0, 0);
+}
+
+float2 PS_VerticalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+
+    float2 grad1 = tex2D(AsciiPing, uv - float2(0, 1) * texelSize).rg;
+    float2 grad2 = tex2D(AsciiPing, uv).rg;
+    float2 grad3 = tex2D(AsciiPing, uv + float2(0, 1) * texelSize).rg;
+
+    float Gx = 3 * grad1.x + 10 * grad2.x + 3 * grad3.x;
+    float Gy = 3 * grad1.y + 0 * grad2.y + -3 * grad3.y;
+
+    float2 G = float2(Gx, Gy);
+    G = normalize(G);
+
+    float magnitude = length(float2(Gx, Gy));
+    float theta = atan2(G.y, G.x);
+
+    // if ((-3.0f * PI / 5.0f) < theta && theta < (-2.0 * PI / 5)) theta = 1;
+    // else theta = 0;
+    return float2(theta, 1 - isnan(theta));
+}
+
 float4 PS_ASCII(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return tex2D(DoG, uv).r;
+    return tex2D(Sobel, uv).g;
 }
 
 technique AFX_ASCII < ui_label = "ASCII"; > {
@@ -123,6 +161,20 @@ technique AFX_ASCII < ui_label = "ASCII"; > {
 
         VertexShader = PostProcessVS;
         PixelShader = PS_VerticalBlurAndDifference;
+    }
+
+    pass {
+        RenderTarget = AFX_AsciiPingTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_HorizontalSobel;
+    }
+
+    pass {
+        RenderTarget = AFX_AsciiSobelTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_VerticalSobel;
     }
     
     pass {

@@ -51,27 +51,40 @@ uniform int _EdgeThreshold <
     ui_tooltip = "how many pixels in an 8x8 grid need to be detected as an edge for an edge to be filled in.";
 > = 8;
 
+uniform bool _Edges <
+    ui_label = "Draw Edges";
+    ui_tooltip = "draw ASCII edges";
+> = true;
+
+uniform bool _Fill <
+    ui_label = "Draw Fill";
+    ui_tooltip = "fill screen with ASCII characters";
+> = true;
+
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
 }
 
-texture2D AFX_ASCIIEdgesLUT < source = "ASCIIedges.png"; > { Width = 40; Height = 8; };
+texture2D AFX_ASCIIEdgesLUT < source = "edgesASCII.png"; > { Width = 40; Height = 8; };
 sampler2D EdgesASCII { Texture = AFX_ASCIIEdgesLUT; AddressU = REPEAT; AddressV = REPEAT; };
 
+
+texture2D AFX_ASCIIFillLUT < source = "fillASCII.png"; > { Width = 80; Height = 8; };
+sampler2D FillASCII { Texture = AFX_ASCIIFillLUT; AddressU = REPEAT; AddressV = REPEAT; };
+
 texture2D AFX_LuminanceAsciiTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
-storage2D s_Luminance { Texture = AFX_LuminanceAsciiTex; };
 sampler2D Luminance { Texture = AFX_LuminanceAsciiTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
+texture2D AFX_DownscaleLuminanceAsciiTex { Width = BUFFER_WIDTH / 8; Height = BUFFER_HEIGHT / 8; Format = R16F; };
+sampler2D LuminanceDownscale { Texture = AFX_DownscaleLuminanceAsciiTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+
 texture2D AFX_AsciiPingTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
-storage2D s_AsciiPing { Texture = AFX_AsciiPingTex; };
 sampler2D AsciiPing { Texture = AFX_AsciiPingTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
 texture2D AFX_AsciiDogTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
-storage2D s_DoG { Texture = AFX_AsciiDogTex; };
 sampler2D DoG { Texture = AFX_AsciiDogTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
 texture2D AFX_AsciiSobelTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG16F; };
-storage2D s_Sobel { Texture = AFX_AsciiSobelTex; };
 sampler2D Sobel { Texture = AFX_AsciiSobelTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
 sampler2D ASCII { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
@@ -215,12 +228,24 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
 
     float3 ascii = 0;
 
-    if (saturate(commonEdgeIndex + 1)) {
+    if (saturate(commonEdgeIndex + 1) && _Edges) {
         float2 localUV;
         localUV.x = ((tid.x % 8)) + quantizedEdge.x;
         localUV.y = 8 - (tid.y % 8);
 
         ascii = tex2Dfetch(EdgesASCII, localUV).r;
+    } else if (_Fill) {
+        uint2 luminanceID = tid.xy / 8;
+
+        float luminance = (tex2Dfetch(LuminanceDownscale, luminanceID).r);
+
+        luminance = max(0, (floor(luminance * 10) - 1)) / 10.0f;
+        
+        float2 localUV;
+        localUV.x = ((tid.x % 8)) + luminance * 80;
+        localUV.y = (tid.y % 8);
+
+        ascii = tex2Dfetch(FillASCII, localUV).r;
     }
 
     float3 debugEdge = 0;
@@ -237,6 +262,13 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
 technique AFX_ASCII < ui_label = "ASCII"; > {
     pass {
         RenderTarget = AFX_LuminanceAsciiTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_Luminance;
+    }
+
+        pass {
+        RenderTarget = AFX_DownscaleLuminanceAsciiTex;
 
         VertexShader = PostProcessVS;
         PixelShader = PS_Luminance;

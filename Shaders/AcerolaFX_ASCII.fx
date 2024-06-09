@@ -34,6 +34,23 @@ uniform float _Threshold <
     ui_label = "Threshold";
 > = 0.005f;
 
+uniform bool _ViewDog <
+    ui_label = "View DoG";
+    ui_tooltip = "View difference of gaussians preprocess";
+> = false;
+
+uniform bool _ViewUncompressed <
+    ui_label = "View Uncompressed";
+    ui_tooltip = "View uncompressed edge direction data";
+> = false;
+
+uniform int _EdgeThreshold <
+    ui_min = 0; ui_max = 64;
+    ui_type = "slider";
+    ui_label = "Edge Threshold";
+    ui_tooltip = "how many pixels in an 8x8 grid need to be detected as an edge for an edge to be filled in.";
+> = 8;
+
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
 }
@@ -55,6 +72,7 @@ storage2D s_Sobel { Texture = AFX_AsciiSobelTex; };
 sampler2D Sobel { Texture = AFX_AsciiSobelTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
 sampler2D ASCII { Texture = AFXTemp1::AFX_RenderTex1; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
+storage2D s_ASCII { Texture = AFXTemp1::AFX_RenderTex1; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ASCII, uv).rgba; }
 
 float PS_Luminance(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -137,8 +155,68 @@ float2 PS_VerticalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : S
     return float2(theta, 1 - isnan(theta));
 }
 
-float4 PS_ASCII(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return tex2D(Sobel, uv).g;
+groupshared int edgeCount[64];
+void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADID) {
+    float grid = ((gid.y == 0) + (gid.x == 0)) * 0.25f;
+
+    float2 sobel = tex2Dfetch(Sobel, tid.xy).rg;
+
+    float theta = sobel.r;
+    float absTheta = abs(theta) / AFX_PI;
+
+    int direction = -1;
+
+    if (any(sobel.g)) {
+        if ((0.0f <= absTheta) && (absTheta < 0.05f)) direction = 0; // VERTICAL
+        else if ((0.9f < absTheta) && (absTheta <= 1.0f)) direction = 0;
+        else if ((0.45f < absTheta) && (absTheta < 0.55f)) direction = 1; // HORIZONTAL
+        else if (0.05f < absTheta && absTheta < 0.45f) direction = sign(theta) > 0 ? 3 : 2; // DIAGONAL 1
+        else if (0.55f < absTheta && absTheta < 0.9f) direction = sign(theta) > 0 ? 2 : 3; // DIAGONAL 2
+    }
+
+    // Set group thread bucket to direction
+    edgeCount[gid.x + gid.y * 8] = direction;
+
+    barrier();
+
+    int commonEdgeIndex = -1;
+    if ((gid.x == 0) && (gid.y == 0)) {
+        uint buckets[4] = {0, 0, 0, 0};
+
+        // Count up directions in tile
+        for (int i = 0; i < 64; ++i) {
+            buckets[edgeCount[i]] += 1;
+        }
+
+        uint maxValue = 0;
+
+        // Scan for most common edge direction (max)
+        for (int j = 0; j < 4; ++j) {
+            if (buckets[j] > maxValue) {
+                commonEdgeIndex = j;
+                maxValue = buckets[j];
+            }
+        }
+
+        // Discard edge info if not enough edge pixels in tile
+        if (maxValue < _EdgeThreshold) commonEdgeIndex = -1;
+
+        edgeCount[0] = commonEdgeIndex;
+    }
+
+    barrier();
+
+    commonEdgeIndex = _ViewUncompressed ? direction : edgeCount[0];
+
+    float3 debugEdge = 0;
+    if (commonEdgeIndex == 0) debugEdge = float3(1, 0, 0);
+    if (commonEdgeIndex == 1) debugEdge = float3(0, 1, 0);
+    if (commonEdgeIndex == 2) debugEdge = float3(0, 1, 1);
+    if (commonEdgeIndex == 3) debugEdge = float3(1, 1, 0);
+
+    if (_ViewDog) debugEdge = tex2Dfetch(DoG, tid.xy).r;
+
+    tex2Dstore(s_ASCII, tid.xy, float4(debugEdge, 1.0f));
 }
 
 technique AFX_ASCII < ui_label = "ASCII"; > {
@@ -176,12 +254,11 @@ technique AFX_ASCII < ui_label = "ASCII"; > {
         VertexShader = PostProcessVS;
         PixelShader = PS_VerticalSobel;
     }
-    
-    pass {
-        RenderTarget = AFXTemp1::AFX_RenderTex1;
 
-        VertexShader = PostProcessVS;
-        PixelShader = PS_ASCII;
+    pass {
+        ComputeShader = CS_RenderASCII<8, 8>;
+        DispatchSizeX = BUFFER_WIDTH / 8;
+        DispatchSizeY = BUFFER_HEIGHT / 8;
     }
 
     pass EndPass {

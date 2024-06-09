@@ -55,6 +55,9 @@ float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
 }
 
+texture2D AFX_ASCIIEdgesLUT < source = "ASCIIedges.png"; > { Width = 40; Height = 8; };
+sampler2D EdgesASCII { Texture = AFX_ASCIIEdgesLUT; AddressU = REPEAT; AddressV = REPEAT; };
+
 texture2D AFX_LuminanceAsciiTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
 storage2D s_Luminance { Texture = AFX_LuminanceAsciiTex; };
 sampler2D Luminance { Texture = AFX_LuminanceAsciiTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
@@ -208,15 +211,27 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
 
     commonEdgeIndex = _ViewUncompressed ? direction : edgeCount[0];
 
+    float4 quantizedEdge = (commonEdgeIndex + 1) * 8;
+
+    float3 ascii = 0;
+
+    if (saturate(commonEdgeIndex + 1)) {
+        float2 localUV;
+        localUV.x = ((tid.x % 8)) + quantizedEdge.x;
+        localUV.y = 8 - (tid.y % 8);
+
+        ascii = tex2Dfetch(EdgesASCII, localUV).r;
+    }
+
     float3 debugEdge = 0;
     if (commonEdgeIndex == 0) debugEdge = float3(1, 0, 0);
     if (commonEdgeIndex == 1) debugEdge = float3(0, 1, 0);
     if (commonEdgeIndex == 2) debugEdge = float3(0, 1, 1);
     if (commonEdgeIndex == 3) debugEdge = float3(1, 1, 0);
 
-    if (_ViewDog) debugEdge = tex2Dfetch(DoG, tid.xy).r;
+    if (_ViewDog) ascii = tex2Dfetch(DoG, tid.xy).r;
 
-    tex2Dstore(s_ASCII, tid.xy, float4(debugEdge, 1.0f));
+    tex2Dstore(s_ASCII, tid.xy, float4(ascii, 1.0f));
 }
 
 technique AFX_ASCII < ui_label = "ASCII"; > {

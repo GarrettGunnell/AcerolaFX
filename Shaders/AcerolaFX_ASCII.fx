@@ -2,6 +2,8 @@
 #include "Includes/AcerolaFX_TempTex1.fxh"
 
 uniform int _KernelSize <
+    ui_category = "Preprocess Settings";
+    ui_category_closed = true;
     ui_min = 1; ui_max = 10;
     ui_type = "slider";
     ui_label = "Kernel Size";
@@ -9,6 +11,8 @@ uniform int _KernelSize <
 > = 2;
 
 uniform float _Sigma <
+    ui_category = "Preprocess Settings";
+    ui_category_closed = true;
     ui_min = 0.0; ui_max = 5.0f;
     ui_type = "slider";
     ui_label = "Blur Strength";
@@ -16,6 +20,8 @@ uniform float _Sigma <
 > = 2.0f;
 
 uniform float _SigmaScale <
+    ui_category = "Preprocess Settings";
+    ui_category_closed = true;
     ui_min = 0.0; ui_max = 5.0f;
     ui_type = "slider";
     ui_label = "Deviation Scale";
@@ -23,33 +29,24 @@ uniform float _SigmaScale <
 > = 1.6f;
 
 uniform float _Tau <
+    ui_category = "Preprocess Settings";
+    ui_category_closed = true;
     ui_min = 0.0; ui_max = 1.1f;
     ui_type = "slider";
     ui_label = "Detail";
 > = 1.0f;
 
 uniform float _Threshold <
+    ui_category = "Preprocess Settings";
+    ui_category_closed = true;
     ui_min = 0.001; ui_max = 0.1f;
     ui_type = "slider";
     ui_label = "Threshold";
 > = 0.005f;
 
-uniform bool _ViewDog <
-    ui_label = "View DoG";
-    ui_tooltip = "View difference of gaussians preprocess";
-> = false;
-
-uniform bool _ViewEdges<
-    ui_label = "View Edges";
-    ui_tooltip = "View edge direction data";
-> = false;
-
-uniform bool _ViewUncompressed <
-    ui_label = "View Uncompressed";
-    ui_tooltip = "View uncompressed edge direction data";
-> = false;
-
 uniform int _EdgeThreshold <
+    ui_category = "ASCII Settings";
+    ui_category_closed = true;
     ui_min = 0; ui_max = 64;
     ui_type = "slider";
     ui_label = "Edge Threshold";
@@ -57,21 +54,48 @@ uniform int _EdgeThreshold <
 > = 8;
 
 uniform bool _Edges <
+    ui_category = "ASCII Settings";
+    ui_category_closed = true;
     ui_label = "Draw Edges";
     ui_tooltip = "draw ASCII edges";
 > = true;
 
 uniform bool _Fill <
+    ui_category = "ASCII Settings";
+    ui_category_closed = true;
     ui_label = "Draw Fill";
     ui_tooltip = "fill screen with ASCII characters";
 > = true;
 
 uniform float _BlendWithBase <
+    ui_category = "ASCII Settings";
+    ui_category_closed = true;
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Base Color Blend";
     ui_type = "slider";
     ui_tooltip = "Blend ascii characters with underlying color from original render.";
 > = 0.0f;
+
+uniform bool _ViewDog <
+    ui_category = "Debug Settings";
+    ui_category_closed = true;
+    ui_label = "View DoG";
+    ui_tooltip = "View difference of gaussians preprocess";
+> = false;
+
+uniform bool _ViewUncompressed <
+    ui_category = "Debug Settings";
+    ui_category_closed = true;
+    ui_label = "View Uncompressed";
+    ui_tooltip = "View uncompressed edge direction data";
+> = false;
+
+uniform bool _ViewEdges<
+    ui_category = "Debug Settings";
+    ui_category_closed = true;
+    ui_label = "View Edges";
+    ui_tooltip = "View edge direction data";
+> = false;
 
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));

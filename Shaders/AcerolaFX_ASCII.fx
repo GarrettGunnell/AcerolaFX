@@ -95,6 +95,32 @@ uniform bool _Fill <
     ui_tooltip = "fill screen with ASCII characters";
 > = true;
 
+uniform float _Exposure <
+    ui_category = "ASCII Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Luminance Exposure";
+    ui_type = "slider";
+    ui_tooltip = "Multiplication on the base luminance of the image to bring up ASCII characters.";
+> = 1.0f;
+
+uniform float _Attenuation <
+    ui_category = "ASCII Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Luminance Exposure";
+    ui_type = "slider";
+    ui_tooltip = "Exponent on the base luminance of the image to bring up ASCII characters.";
+> = 1.0f;
+
+
+uniform bool _InvertLuminance <
+    ui_category = "ASCII Settings";
+    ui_category_closed = true;
+    ui_label = "Invert ASCII";
+    ui_tooltip = "Invert ASCII luminance relationship.";
+> = false;
+
 uniform float3 _ASCIIColor <
     ui_category = "Color Settings";
     ui_category_closed = true;
@@ -412,12 +438,14 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
 
         ascii = tex2Dfetch(EdgesASCII, localUV).r;
     } else if (_Fill) {
-        float luminance = downscaleInfo.w;
+        float luminance = saturate(pow(downscaleInfo.w * _Exposure, _Attenuation));
+
+        if (_InvertLuminance) luminance = 1 - luminance;
 
         luminance = max(0, (floor(luminance * 10) - 1)) / 10.0f;
         
         float2 localUV;
-        localUV.x = ((tid.x % 8)) + luminance * 80;
+        localUV.x = (((tid.x % 8)) + (luminance) * 80);
         localUV.y = (tid.y % 8);
 
         ascii = tex2Dfetch(FillASCII, localUV).r;

@@ -118,6 +118,24 @@ uniform float _BlendWithBase <
     ui_tooltip = "Blend ascii characters with underlying color from original render.";
 > = 0.0f;
 
+uniform float _DepthFalloff <
+    ui_category = "Color Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Depth Falloff";
+    ui_type = "slider";
+    ui_tooltip = "How quickly ascii characters fade into the distance.";
+> = 0.0f;
+
+uniform float _DepthOffset <
+    ui_category = "Color Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 1000.0f;
+    ui_label = "Depth Offset";
+    ui_type = "slider";
+    ui_tooltip = "Adjust point at which ascii characters falloff.";
+> = 0.0f;
+
 uniform bool _ViewDog <
     ui_category = "Debug Settings";
     ui_category_closed = true;
@@ -287,7 +305,7 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
 
     output -= tex2D(DoG, uv).r;
 
-    return output;
+    return abs(output);
 }
 
 float4 PS_HorizontalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -320,7 +338,7 @@ float2 PS_VerticalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : S
     float theta = atan2(G.y, G.x);
 
     if (_DepthCutoff > 0.0f) {
-        if (tex2D(Normals, uv).w * 1000 > _DepthCutoff)
+        if (ReShade::GetLinearizedDepth(uv) * 1000 > _DepthCutoff)
             theta = 0.0f / 0.0f;
     }
 
@@ -405,7 +423,16 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
         ascii = tex2Dfetch(FillASCII, localUV).r;
     }
 
-    ascii = _BackgroundColor * (1 - ascii) + lerp(_ASCIIColor, downscaleInfo.rgb, _BlendWithBase) * ascii;
+    ascii = lerp(_BackgroundColor, lerp(_ASCIIColor, downscaleInfo.rgb, _BlendWithBase), ascii);
+
+    float depth = tex2Dfetch(Normals, (tid.xy - gid.xy) + 4).w;
+    float z = depth * 1000.0f;
+
+    float fogFactor = (_DepthFalloff * 0.005f / sqrt(log(2))) * max(0.0f, z - _DepthOffset);
+    fogFactor = exp2(-fogFactor * fogFactor);
+
+    ascii = lerp(_BackgroundColor, ascii, fogFactor);
+
 
     if (_ViewDog) ascii = tex2Dfetch(Edges, tid.xy).r;
     if (_ViewEdges || _ViewUncompressed) {

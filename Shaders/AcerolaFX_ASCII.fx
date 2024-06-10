@@ -39,6 +39,11 @@ uniform bool _ViewDog <
     ui_tooltip = "View difference of gaussians preprocess";
 > = false;
 
+uniform bool _ViewEdges<
+    ui_label = "View Edges";
+    ui_tooltip = "View edge direction data";
+> = false;
+
 uniform bool _ViewUncompressed <
     ui_label = "View Uncompressed";
     ui_tooltip = "View uncompressed edge direction data";
@@ -61,6 +66,13 @@ uniform bool _Fill <
     ui_tooltip = "fill screen with ASCII characters";
 > = true;
 
+uniform float _BlendWithBase <
+    ui_min = 0.0f; ui_max = 1.0f;
+    ui_label = "Base Color Blend";
+    ui_type = "slider";
+    ui_tooltip = "Blend ascii characters with underlying color from original render.";
+> = 0.0f;
+
 float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
 }
@@ -75,8 +87,8 @@ sampler2D FillASCII { Texture = AFX_ASCIIFillLUT; AddressU = REPEAT; AddressV = 
 texture2D AFX_LuminanceAsciiTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
 sampler2D Luminance { Texture = AFX_LuminanceAsciiTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
-texture2D AFX_DownscaleLuminanceAsciiTex { Width = BUFFER_WIDTH / 8; Height = BUFFER_HEIGHT / 8; Format = R16F; };
-sampler2D LuminanceDownscale { Texture = AFX_DownscaleLuminanceAsciiTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+texture2D AFX_DownscaleTex { Width = BUFFER_WIDTH / 8; Height = BUFFER_HEIGHT / 8; Format = RGBA16F; };
+sampler2D Downscale { Texture = AFX_DownscaleTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
 texture2D AFX_AsciiPingTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler2D AsciiPing { Texture = AFX_AsciiPingTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
@@ -93,6 +105,14 @@ float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARG
 
 float PS_Luminance(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     return Common::Luminance(saturate(tex2D(Common::AcerolaBuffer, uv).rgb));
+}
+
+float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float4 col = saturate(tex2D(Common::AcerolaBuffer, uv));
+
+    float lum = Common::Luminance(col.rgb);
+
+    return float4(col.rgb, lum);
 }
 
 float4 PS_HorizontalBlur(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -228,6 +248,9 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
 
     float3 ascii = 0;
 
+    uint2 downscaleID = tid.xy / 8;
+    float4 downscaleInfo = tex2Dfetch(Downscale, downscaleID);
+
     if (saturate(commonEdgeIndex + 1) && _Edges) {
         float2 localUV;
         localUV.x = ((tid.x % 8)) + quantizedEdge.x;
@@ -235,9 +258,7 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
 
         ascii = tex2Dfetch(EdgesASCII, localUV).r;
     } else if (_Fill) {
-        uint2 luminanceID = tid.xy / 8;
-
-        float luminance = (tex2Dfetch(LuminanceDownscale, luminanceID).r);
+        float luminance = downscaleInfo.w;
 
         luminance = max(0, (floor(luminance * 10) - 1)) / 10.0f;
         
@@ -248,13 +269,16 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
         ascii = tex2Dfetch(FillASCII, localUV).r;
     }
 
-    float3 debugEdge = 0;
-    if (commonEdgeIndex == 0) debugEdge = float3(1, 0, 0);
-    if (commonEdgeIndex == 1) debugEdge = float3(0, 1, 0);
-    if (commonEdgeIndex == 2) debugEdge = float3(0, 1, 1);
-    if (commonEdgeIndex == 3) debugEdge = float3(1, 1, 0);
+    ascii *= lerp(1.0f, downscaleInfo.rgb, _BlendWithBase);
 
     if (_ViewDog) ascii = tex2Dfetch(DoG, tid.xy).r;
+    if (_ViewEdges || _ViewUncompressed) {
+        ascii = 0;
+        if (commonEdgeIndex == 0) ascii = float3(1, 0, 0);
+        if (commonEdgeIndex == 1) ascii = float3(0, 1, 0);
+        if (commonEdgeIndex == 2) ascii = float3(0, 1, 1);
+        if (commonEdgeIndex == 3) ascii = float3(1, 1, 0);
+    }
 
     tex2Dstore(s_ASCII, tid.xy, float4(ascii, 1.0f));
 }
@@ -268,10 +292,10 @@ technique AFX_ASCII < ui_label = "ASCII"; > {
     }
 
         pass {
-        RenderTarget = AFX_DownscaleLuminanceAsciiTex;
+        RenderTarget = AFX_DownscaleTex;
 
         VertexShader = PostProcessVS;
-        PixelShader = PS_Luminance;
+        PixelShader = PS_Downscale;
     }
     
     pass {

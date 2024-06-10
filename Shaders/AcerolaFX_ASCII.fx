@@ -63,6 +63,14 @@ uniform float _NormalThreshold <
     ui_tooltip = "Adjust the threshold for normal differences to count as an edge.";
 > = 0.1f;
 
+uniform float _DepthCutoff <
+    ui_category = "Edge Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 1000.0f;
+    ui_type = "slider";
+    ui_label = "Depth Cutoff";
+    ui_tooltip = "Adjust the threshold for depth differences to count as an edge.";
+> = 50.0f;
 
 uniform int _EdgeThreshold <
     ui_category = "Edge Settings";
@@ -277,10 +285,9 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     if (dot(normalSum, 1) > _NormalThreshold)
         output = 1.0f;
 
+    output -= tex2D(DoG, uv).r;
 
-    float D = tex2D(DoG, uv).r;
-
-    return D - output;
+    return output;
 }
 
 float4 PS_HorizontalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
@@ -312,8 +319,11 @@ float2 PS_VerticalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : S
     float magnitude = length(float2(Gx, Gy));
     float theta = atan2(G.y, G.x);
 
-    // if ((-3.0f * PI / 5.0f) < theta && theta < (-2.0 * PI / 5)) theta = 1;
-    // else theta = 0;
+    if (_DepthCutoff > 0.0f) {
+        if (tex2D(Normals, uv).w * 1000 > _DepthCutoff)
+            theta = 0.0f / 0.0f;
+    }
+
     return float2(theta, 1 - isnan(theta));
 }
 

@@ -1,5 +1,6 @@
 #include "Includes/AcerolaFX_Common.fxh"
 #include "Includes/AcerolaFX_TempTex1.fxh"
+#include "Includes/AcerolaFX_TempTex2.fxh"
 
 uniform int _KernelSize <
     ui_category = "Preprocess Settings";
@@ -44,8 +45,27 @@ uniform float _Threshold <
     ui_label = "Threshold";
 > = 0.005f;
 
+uniform float _DepthThreshold <
+    ui_category = "Edge Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_type = "slider";
+    ui_label = "Depth Threshold";
+    ui_tooltip = "Adjust the threshold for depth differences to count as an edge.";
+> = 0.1f;
+
+uniform float _NormalThreshold <
+    ui_category = "Edge Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_type = "slider";
+    ui_label = "Normal Threshold";
+    ui_tooltip = "Adjust the threshold for normal differences to count as an edge.";
+> = 0.1f;
+
+
 uniform int _EdgeThreshold <
-    ui_category = "ASCII Settings";
+    ui_category = "Edge Settings";
     ui_category_closed = true;
     ui_min = 0; ui_max = 64;
     ui_type = "slider";
@@ -67,8 +87,22 @@ uniform bool _Fill <
     ui_tooltip = "fill screen with ASCII characters";
 > = true;
 
+uniform float3 _ASCIIColor <
+    ui_category = "Color Settings";
+    ui_category_closed = true;
+    ui_type = "color";
+    ui_label = "ASCII Color";
+> = 1.0f;
+
+uniform float3 _BackgroundColor <
+    ui_category = "Color Settings";
+    ui_category_closed = true;
+    ui_type = "color";
+    ui_label = "Background Color";
+> = 0.0f;
+
 uniform float _BlendWithBase <
-    ui_category = "ASCII Settings";
+    ui_category = "Color Settings";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 1.0f;
     ui_label = "Base Color Blend";
@@ -104,9 +138,10 @@ float gaussian(float sigma, float pos) {
 texture2D AFX_ASCIIEdgesLUT < source = "edgesASCII.png"; > { Width = 40; Height = 8; };
 sampler2D EdgesASCII { Texture = AFX_ASCIIEdgesLUT; AddressU = REPEAT; AddressV = REPEAT; };
 
-
 texture2D AFX_ASCIIFillLUT < source = "fillASCII.png"; > { Width = 80; Height = 8; };
 sampler2D FillASCII { Texture = AFX_ASCIIFillLUT; AddressU = REPEAT; AddressV = REPEAT; };
+
+sampler2D Normals { Texture = AFXTemp2::AFX_RenderTex2; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT; };
 
 texture2D AFX_LuminanceAsciiTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
 sampler2D Luminance { Texture = AFX_LuminanceAsciiTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
@@ -119,6 +154,9 @@ sampler2D AsciiPing { Texture = AFX_AsciiPingTex; MagFilter = POINT; MinFilter =
 
 texture2D AFX_AsciiDogTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
 sampler2D DoG { Texture = AFX_AsciiDogTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
+
+texture2D AFX_AsciiEdgesTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
+sampler2D Edges { Texture = AFX_AsciiEdgesTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
 
 texture2D AFX_AsciiSobelTex { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG16F; };
 sampler2D Sobel { Texture = AFX_AsciiSobelTex; MagFilter = POINT; MinFilter = POINT; MipFilter = POINT;};
@@ -181,12 +219,76 @@ float PS_VerticalBlurAndDifference(float4 position : SV_POSITION, float2 uv : TE
     return D;
 }
 
+float4 PS_CalculateNormals(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float3 offset = float3(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, 0.0);
+	float2 posCenter = uv;
+	float2 posNorth  = posCenter - offset.zy;
+	float2 posEast   = posCenter + offset.xz;
+
+    float centerDepth = ReShade::GetLinearizedDepth(posCenter);
+
+	float3 vertCenter = float3(posCenter - 0.5, 1) * centerDepth;
+	float3 vertNorth  = float3(posNorth - 0.5,  1) * ReShade::GetLinearizedDepth(posNorth);
+	float3 vertEast   = float3(posEast - 0.5,   1) * ReShade::GetLinearizedDepth(posEast);
+
+	return float4(normalize(cross(vertCenter - vertNorth, vertCenter - vertEast)) * 0.5 + 0.5, centerDepth);
+
+}
+
+float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
+    float2 offset = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float4 col = tex2D(Common::AcerolaBuffer, uv);
+
+    float4 c  = tex2D(Normals, uv + float2( 0,  0) * offset);
+    float4 w  = tex2D(Normals, uv + float2(-1,  0) * offset);
+    float4 e  = tex2D(Normals, uv + float2( 1,  0) * offset);
+    float4 n  = tex2D(Normals, uv + float2( 0, -1) * offset);
+    float4 s  = tex2D(Normals, uv + float2( 0,  1) * offset);
+    float4 nw = tex2D(Normals, uv + float2(-1, -1) * offset);
+    float4 sw = tex2D(Normals, uv + float2( 1, -1) * offset);
+    float4 ne = tex2D(Normals, uv + float2(-1,  1) * offset);
+    float4 se = tex2D(Normals, uv + float2( 1,  1) * offset);
+    
+    float output = 0.0f;
+
+    float depthSum = 0.0f;
+    depthSum += abs(w.w - c.w);
+    depthSum += abs(e.w - c.w);
+    depthSum += abs(n.w - c.w);
+    depthSum += abs(s.w - c.w);
+    depthSum += abs(nw.w - c.w);
+    depthSum += abs(sw.w - c.w);
+    depthSum += abs(ne.w - c.w);
+    depthSum += abs(se.w - c.w);
+
+    if (depthSum > _DepthThreshold)
+        output = 1.0f;
+
+    float3 normalSum = 0.0f;
+    normalSum += abs(w.rgb - c.rgb);
+    normalSum += abs(e.rgb - c.rgb);
+    normalSum += abs(n.rgb - c.rgb);
+    normalSum += abs(s.rgb - c.rgb);
+    normalSum += abs(nw.rgb - c.rgb);
+    normalSum += abs(sw.rgb - c.rgb);
+    normalSum += abs(ne.rgb - c.rgb);
+    normalSum += abs(se.rgb - c.rgb);
+
+    if (dot(normalSum, 1) > _NormalThreshold)
+        output = 1.0f;
+
+
+    float D = tex2D(DoG, uv).r;
+
+    return D - output;
+}
+
 float4 PS_HorizontalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
 
-    float lum1 = tex2D(DoG, uv - float2(1, 0) * texelSize).r;
-    float lum2 = tex2D(DoG, uv).r;
-    float lum3 = tex2D(DoG, uv + float2(1, 0) * texelSize).r;
+    float lum1 = tex2D(Edges, uv - float2(1, 0) * texelSize).r;
+    float lum2 = tex2D(Edges, uv).r;
+    float lum3 = tex2D(Edges, uv + float2(1, 0) * texelSize).r;
 
     float Gx = 3 * lum1 + 0 * lum2 + -3 * lum3;
     float Gy = 3 + lum1 + 10 * lum2 + 3 * lum3;
@@ -293,9 +395,9 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
         ascii = tex2Dfetch(FillASCII, localUV).r;
     }
 
-    ascii *= lerp(1.0f, downscaleInfo.rgb, _BlendWithBase);
+    ascii = _BackgroundColor * (1 - ascii) + lerp(_ASCIIColor, downscaleInfo.rgb, _BlendWithBase) * ascii;
 
-    if (_ViewDog) ascii = tex2Dfetch(DoG, tid.xy).r;
+    if (_ViewDog) ascii = tex2Dfetch(Edges, tid.xy).r;
     if (_ViewEdges || _ViewUncompressed) {
         ascii = 0;
         if (commonEdgeIndex == 0) ascii = float3(1, 0, 0);
@@ -334,6 +436,20 @@ technique AFX_ASCII < ui_label = "ASCII"; > {
 
         VertexShader = PostProcessVS;
         PixelShader = PS_VerticalBlurAndDifference;
+    }
+
+    pass {
+        RenderTarget = AFXTemp2::AFX_RenderTex2;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_CalculateNormals;
+    }
+
+    pass {
+        RenderTarget = AFX_AsciiEdgesTex;
+
+        VertexShader = PostProcessVS;
+        PixelShader = PS_EdgeDetect;
     }
 
     pass {

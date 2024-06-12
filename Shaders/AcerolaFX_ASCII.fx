@@ -2,6 +2,24 @@
 #include "Includes/AcerolaFX_TempTex1.fxh"
 #include "Includes/AcerolaFX_TempTex2.fxh"
 
+uniform float _Zoom <
+    ui_category = "Preprocess Settings";
+    ui_category_closed = true;
+    ui_min = 0.0f; ui_max = 5.0f;
+    ui_label = "Zoom";
+    ui_type = "drag";
+    ui_tooltip = "Decrease to zoom in, increase to zoom out.";
+> = 1.0f;
+
+uniform float2 _Offset <
+    ui_category = "Preprocess Settings";
+    ui_category_closed = true;
+    ui_min = -1.0f; ui_max = 1.0f;
+    ui_label = "Offset";
+    ui_type = "drag";
+    ui_tooltip = "Positional offset of the zoom from the center.";
+> = 0.0f;
+
 uniform int _KernelSize <
     ui_category = "Preprocess Settings";
     ui_category_closed = true;
@@ -201,6 +219,15 @@ float gaussian(float sigma, float pos) {
     return (1.0f / sqrt(2.0f * AFX_PI * sigma * sigma)) * exp(-(pos * pos) / (2.0f * sigma * sigma));
 }
 
+float2 transformUV(float2 uv) {
+    float2 zoomUV = uv * 2 - 1;
+    zoomUV += float2(-_Offset.x, _Offset.y) * 2;
+    zoomUV *= _Zoom;
+    zoomUV = zoomUV * 0.5f + 0.5f;
+
+    return zoomUV;
+}
+
 texture2D AFX_ASCIIEdgesLUT < source = "edgesASCII.png"; > { Width = 40; Height = 8; };
 sampler2D EdgesASCII { Texture = AFX_ASCIIEdgesLUT; AddressU = REPEAT; AddressV = REPEAT; };
 
@@ -232,11 +259,11 @@ storage2D s_ASCII { Texture = AFXTemp1::AFX_RenderTex1; };
 float4 PS_EndPass(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET { return tex2D(ASCII, uv).rgba; }
 
 float PS_Luminance(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    return Common::Luminance(saturate(tex2D(Common::AcerolaBuffer, uv).rgb));
+    return Common::Luminance(saturate(tex2D(Common::AcerolaBufferBorderLinear, transformUV(uv)).rgb));
 }
 
 float4 PS_Downscale(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float4 col = saturate(tex2D(Common::AcerolaBuffer, uv));
+    float4 col = saturate(tex2D(Common::AcerolaBufferBorderLinear, transformUV(uv)));
 
     float lum = Common::Luminance(col.rgb);
 
@@ -291,11 +318,11 @@ float4 PS_CalculateNormals(float4 position : SV_POSITION, float2 uv : TEXCOORD) 
 	float2 posNorth  = posCenter - texelSize.zy;
 	float2 posEast   = posCenter + texelSize.xz;
 
-    float centerDepth = ReShade::GetLinearizedDepth(posCenter);
+    float centerDepth = ReShade::GetLinearizedDepth(transformUV(posCenter));
 
 	float3 vertCenter = float3(posCenter - 0.5, 1) * centerDepth;
-	float3 vertNorth  = float3(posNorth - 0.5,  1) * ReShade::GetLinearizedDepth(posNorth);
-	float3 vertEast   = float3(posEast - 0.5,   1) * ReShade::GetLinearizedDepth(posEast);
+	float3 vertNorth  = float3(posNorth - 0.5,  1) * ReShade::GetLinearizedDepth(transformUV(posNorth));
+	float3 vertEast   = float3(posEast - 0.5,   1) * ReShade::GetLinearizedDepth(transformUV(posEast));
 
 	return float4(normalize(cross(vertCenter - vertNorth, vertCenter - vertEast)), centerDepth);
 
@@ -378,7 +405,7 @@ float2 PS_VerticalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : S
     float theta = atan2(G.y, G.x);
 
     if (_DepthCutoff > 0.0f) {
-        if (ReShade::GetLinearizedDepth(uv) * 1000 > _DepthCutoff)
+        if (ReShade::GetLinearizedDepth(transformUV(uv)) * 1000 > _DepthCutoff)
             theta = 0.0f / 0.0f;
     }
 

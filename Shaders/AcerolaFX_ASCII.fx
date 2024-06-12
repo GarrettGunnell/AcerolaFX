@@ -27,6 +27,7 @@ uniform int _KernelSize <
     ui_type = "slider";
     ui_label = "Kernel Size";
     ui_tooltip = "Size of the blur kernel";
+    ui_spacing = 4;
 > = 2;
 
 uniform float _Sigma <
@@ -64,14 +65,15 @@ uniform float _Threshold <
 > = 0.005f;
 
 uniform bool _UseDepth <
-    ui_category = "Edge Settings";
+    ui_category = "Preprocess Settings";
     ui_category_closed = true;
     ui_label = "Use Depth";
     ui_tooltip = "use depth info to inform edges.";
+    ui_spacing = 4;
 > = true;
 
 uniform float _DepthThreshold <
-    ui_category = "Edge Settings";
+    ui_category = "Preprocess Settings";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
     ui_type = "slider";
@@ -80,14 +82,14 @@ uniform float _DepthThreshold <
 > = 0.1f;
 
 uniform bool _UseNormals <
-    ui_category = "Edge Settings";
+    ui_category = "Preprocess Settings";
     ui_category_closed = true;
     ui_label = "Use Normals";
     ui_tooltip = "use normal info to inform edges.";
 > = true;
 
 uniform float _NormalThreshold <
-    ui_category = "Edge Settings";
+    ui_category = "Preprocess Settings";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
     ui_type = "slider";
@@ -96,7 +98,7 @@ uniform float _NormalThreshold <
 > = 0.1f;
 
 uniform float _DepthCutoff <
-    ui_category = "Edge Settings";
+    ui_category = "Preprocess Settings";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 1000.0f;
     ui_type = "slider";
@@ -105,7 +107,7 @@ uniform float _DepthCutoff <
 > = 50.0f;
 
 uniform int _EdgeThreshold <
-    ui_category = "Edge Settings";
+    ui_category = "Preprocess Settings";
     ui_category_closed = true;
     ui_min = 0; ui_max = 64;
     ui_type = "slider";
@@ -114,21 +116,21 @@ uniform int _EdgeThreshold <
 > = 8;
 
 uniform bool _Edges <
-    ui_category = "ASCII Settings";
+    ui_category = "Color Settings";
     ui_category_closed = true;
     ui_label = "Draw Edges";
     ui_tooltip = "draw ASCII edges";
 > = true;
 
 uniform bool _Fill <
-    ui_category = "ASCII Settings";
+    ui_category = "Color Settings";
     ui_category_closed = true;
     ui_label = "Draw Fill";
     ui_tooltip = "fill screen with ASCII characters";
 > = true;
 
 uniform float _Exposure <
-    ui_category = "ASCII Settings";
+    ui_category = "Color Settings";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Luminance Exposure";
@@ -137,7 +139,7 @@ uniform float _Exposure <
 > = 1.0f;
 
 uniform float _Attenuation <
-    ui_category = "ASCII Settings";
+    ui_category = "Color Settings";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
     ui_label = "Luminance Attenuation";
@@ -147,7 +149,7 @@ uniform float _Attenuation <
 
 
 uniform bool _InvertLuminance <
-    ui_category = "ASCII Settings";
+    ui_category = "Color Settings";
     ui_category_closed = true;
     ui_label = "Invert ASCII";
     ui_tooltip = "Invert ASCII luminance relationship.";
@@ -158,6 +160,7 @@ uniform float3 _ASCIIColor <
     ui_category_closed = true;
     ui_type = "color";
     ui_label = "ASCII Color";
+    ui_spacing = 4;
 > = 1.0f;
 
 uniform float3 _BackgroundColor <
@@ -183,6 +186,7 @@ uniform float _DepthFalloff <
     ui_label = "Depth Falloff";
     ui_type = "slider";
     ui_tooltip = "How quickly ascii characters fade into the distance.";
+    ui_spacing = 4;
 > = 0.0f;
 
 uniform float _DepthOffset <

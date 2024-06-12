@@ -45,6 +45,13 @@ uniform float _Threshold <
     ui_label = "Threshold";
 > = 0.005f;
 
+uniform bool _UseDepth <
+    ui_category = "Edge Settings";
+    ui_category_closed = true;
+    ui_label = "Use Depth";
+    ui_tooltip = "use depth info to inform edges.";
+> = true;
+
 uniform float _DepthThreshold <
     ui_category = "Edge Settings";
     ui_category_closed = true;
@@ -53,6 +60,13 @@ uniform float _DepthThreshold <
     ui_label = "Depth Threshold";
     ui_tooltip = "Adjust the threshold for depth differences to count as an edge.";
 > = 0.1f;
+
+uniform bool _UseNormals <
+    ui_category = "Edge Settings";
+    ui_category_closed = true;
+    ui_label = "Use Normals";
+    ui_tooltip = "use normal info to inform edges.";
+> = true;
 
 uniform float _NormalThreshold <
     ui_category = "Edge Settings";
@@ -108,7 +122,7 @@ uniform float _Attenuation <
     ui_category = "ASCII Settings";
     ui_category_closed = true;
     ui_min = 0.0f; ui_max = 5.0f;
-    ui_label = "Luminance Exposure";
+    ui_label = "Luminance Attenuation";
     ui_type = "slider";
     ui_tooltip = "Exponent on the base luminance of the image to bring up ASCII characters.";
 > = 1.0f;
@@ -272,10 +286,10 @@ float PS_VerticalBlurAndDifference(float4 position : SV_POSITION, float2 uv : TE
 }
 
 float4 PS_CalculateNormals(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float3 offset = float3(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, 0.0);
+    float3 texelSize = float3(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, 0.0);
 	float2 posCenter = uv;
-	float2 posNorth  = posCenter - offset.zy;
-	float2 posEast   = posCenter + offset.xz;
+	float2 posNorth  = posCenter - texelSize.zy;
+	float2 posEast   = posCenter + texelSize.xz;
 
     float centerDepth = ReShade::GetLinearizedDepth(posCenter);
 
@@ -283,23 +297,23 @@ float4 PS_CalculateNormals(float4 position : SV_POSITION, float2 uv : TEXCOORD) 
 	float3 vertNorth  = float3(posNorth - 0.5,  1) * ReShade::GetLinearizedDepth(posNorth);
 	float3 vertEast   = float3(posEast - 0.5,   1) * ReShade::GetLinearizedDepth(posEast);
 
-	return float4(normalize(cross(vertCenter - vertNorth, vertCenter - vertEast)) * 0.5 + 0.5, centerDepth);
+	return float4(normalize(cross(vertCenter - vertNorth, vertCenter - vertEast)), centerDepth);
 
 }
 
 float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
-    float2 offset = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
+    float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
     float4 col = tex2D(Common::AcerolaBuffer, uv);
 
-    float4 c  = tex2D(Normals, uv + float2( 0,  0) * offset);
-    float4 w  = tex2D(Normals, uv + float2(-1,  0) * offset);
-    float4 e  = tex2D(Normals, uv + float2( 1,  0) * offset);
-    float4 n  = tex2D(Normals, uv + float2( 0, -1) * offset);
-    float4 s  = tex2D(Normals, uv + float2( 0,  1) * offset);
-    float4 nw = tex2D(Normals, uv + float2(-1, -1) * offset);
-    float4 sw = tex2D(Normals, uv + float2( 1, -1) * offset);
-    float4 ne = tex2D(Normals, uv + float2(-1,  1) * offset);
-    float4 se = tex2D(Normals, uv + float2( 1,  1) * offset);
+    float4 c  = tex2D(Normals, uv + float2( 0,  0) * texelSize);
+    float4 w  = tex2D(Normals, uv + float2(-1,  0) * texelSize);
+    float4 e  = tex2D(Normals, uv + float2( 1,  0) * texelSize);
+    float4 n  = tex2D(Normals, uv + float2( 0, -1) * texelSize);
+    float4 s  = tex2D(Normals, uv + float2( 0,  1) * texelSize);
+    float4 nw = tex2D(Normals, uv + float2(-1, -1) * texelSize);
+    float4 sw = tex2D(Normals, uv + float2( 1, -1) * texelSize);
+    float4 ne = tex2D(Normals, uv + float2(-1,  1) * texelSize);
+    float4 se = tex2D(Normals, uv + float2( 1,  1) * texelSize);
     
     float output = 0.0f;
 
@@ -313,7 +327,7 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     depthSum += abs(ne.w - c.w);
     depthSum += abs(se.w - c.w);
 
-    if (depthSum > _DepthThreshold)
+    if (_UseDepth && depthSum > _DepthThreshold)
         output = 1.0f;
 
     float3 normalSum = 0.0f;
@@ -326,12 +340,12 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
     normalSum += abs(ne.rgb - c.rgb);
     normalSum += abs(se.rgb - c.rgb);
 
-    if (dot(normalSum, 1) > _NormalThreshold)
+    if (_UseNormals && dot(normalSum, 1) > _NormalThreshold)
         output = 1.0f;
 
-    output -= tex2D(DoG, uv).r;
+    float D = tex2D(DoG, uv).r;
 
-    return abs(output);
+    return saturate(D - output);
 }
 
 float4 PS_HorizontalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

@@ -376,7 +376,7 @@ float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_T
 
     float D = tex2D(DoG, uv).r;
 
-    return saturate(D - output);
+    return saturate(abs(D - output));
 }
 
 float4 PS_HorizontalSobel(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {

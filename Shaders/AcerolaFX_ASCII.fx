@@ -103,8 +103,8 @@ uniform float _DepthCutoff <
     ui_min = 0.0f; ui_max = 1000.0f;
     ui_type = "slider";
     ui_label = "Depth Cutoff";
-    ui_tooltip = "Adjust the threshold for depth differences to count as an edge.";
-> = 50.0f;
+    ui_tooltip = "Adjust distance at which edges are no longer drawn.";
+> = 0.0f;
 
 uniform int _EdgeThreshold <
     ui_category = "Preprocess Settings";

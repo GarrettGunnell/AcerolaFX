@@ -519,7 +519,7 @@ void CS_RenderASCII(uint3 tid : SV_DISPATCHTHREADID, uint3 gid : SV_GROUPTHREADI
     tex2Dstore(s_ASCII, tid.xy, float4(ascii, 1.0f));
 }
 
-technique AFX_ASCII < ui_label = "ASCII"; > {
+technique AFX_ASCII < ui_label = "ASCII"; ui_tooltip = "(LDR) Replace the image with text characters."; > {
     pass {
         RenderTarget = AFX_LuminanceAsciiTex;
 

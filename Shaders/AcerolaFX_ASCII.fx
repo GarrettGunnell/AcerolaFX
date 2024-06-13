@@ -334,7 +334,6 @@ float4 PS_CalculateNormals(float4 position : SV_POSITION, float2 uv : TEXCOORD) 
 
 float4 PS_EdgeDetect(float4 position : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float2 texelSize = float2(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT);
-    float4 col = tex2D(Common::AcerolaBuffer, uv);
 
     float4 c  = tex2D(Normals, uv + float2( 0,  0) * texelSize);
     float4 w  = tex2D(Normals, uv + float2(-1,  0) * texelSize);

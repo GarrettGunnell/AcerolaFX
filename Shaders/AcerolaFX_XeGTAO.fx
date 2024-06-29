@@ -177,7 +177,13 @@ void CS_CalculateNoise(uint3 tid : SV_DISPATCHTHREADID) {
 }
 
 void CS_PrefilterDepths(uint3 tid : SV_DISPATCHTHREADID) {
-    tex2Dstore(s_OutDepths, tid.xy, XeGTAO::ClampDepth(XeGTAO::ScreenSpaceToViewSpaceDepth(tex2Dfetch(ReShade::DepthBuffer, tid.xy).r)));
+    float depth = tex2Dfetch(ReShade::DepthBuffer, tid.xy).r;
+
+#if RESHADE_DEPTH_INPUT_IS_REVERSED
+		depth = 1.0 - depth;
+#endif
+
+    tex2Dstore(s_OutDepths, tid.xy, XeGTAO::ClampDepth(XeGTAO::ScreenSpaceToViewSpaceDepth(depth)));
 }
 
 void CS_MainPass(uint3 tid : SV_DISPATCHTHREADID) {

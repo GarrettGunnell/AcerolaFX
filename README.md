@@ -6,9 +6,7 @@ For information on installation and usage please refer to the [wiki](https://git
 
 ## Examples
 
-For an album of gameplay shader comparisons please look [here](https://imgsli.com/MTE0MTg3/0/1)!
-
-For an album of gpose shader comparisons please look [here](https://imgsli.com/MTE0MzUw/0/1)!
+The former interactive gameplay and gpose before-and-after galleries are no longer available. The screenshots below remain available as static examples of the shader effects.
 
 ![example1](./Examples/example1.png) <br>
 ![example2](./Examples/example2.png) <br>
